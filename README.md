@@ -80,6 +80,28 @@ Open `http://yoursite/whatsapp/` — done.
 
 ---
 
+## Optional Dashboard Configuration
+
+You can customize the look and feel of the WhatsApp Dashboard directly from your `settings.py`. All of these settings are optional!
+
+```python
+# settings.py
+
+# Replace the text name in the sidebar (default: "WhatsApp")
+META_WHATSAPP_DASHBOARD_NAME = "My Custom App"
+
+# Change the Lucide icon used in the sidebar (default: "message-circle")
+META_WHATSAPP_DASHBOARD_ICON = "building-2"
+
+# Or, use a complete custom image logo instead of the icon
+META_WHATSAPP_DASHBOARD_LOGO = "/static/logo.png"
+
+# Change the primary accent color of the entire dashboard! (Provide an HSL triplet)
+META_WHATSAPP_ACCENT_COLOR = "142, 72%, 45%"   # Emerald green
+```
+
+---
+
 ## Multi-Account Support
 
 Add accounts in the **Settings → Accounts** dashboard. Each account has its own:
@@ -332,3 +354,9 @@ META_WA_VERIFY_TOKEN=my_secret_verify_token
 ## License
 
 MIT
+
+
+## Developer
+Created by [Rahul Baberwal](https://rahulbaberwal.com).
+
+**Repository:** [https://github.com/rahul-baberwal/django-meta-whatsapp/](https://github.com/rahul-baberwal/django-meta-whatsapp/)

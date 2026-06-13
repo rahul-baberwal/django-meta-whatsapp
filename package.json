@@ -1,0 +1,28 @@
+{
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  },
+  "name": "django_meta_whatsapp",
+  "version": "1.0.0",
+  "description": "A production-ready Django WhatsApp Cloud Platform you can drop into any Django project.",
+  "main": "tailwind.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rahul-baberwal/django-meta-whatsapp.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/rahul-baberwal/django-meta-whatsapp/issues"
+  },
+  "homepage": "https://github.com/rahul-baberwal/django-meta-whatsapp#readme"
+}

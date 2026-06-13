@@ -8,12 +8,29 @@
 {% endblock %}
 {% block content %}
 <div class="space-y-4">
-  <div class="flex gap-3">
-    <select onchange="window.location='?status='+this.value" class="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+  <form method="get" class="flex flex-wrap gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+    <div class="flex-1 min-w-[200px]">
+      <div class="relative">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <i data-lucide="search" class="w-4 h-4 text-gray-400"></i>
+        </div>
+        <input type="text" name="q" value="{{ search_q }}" placeholder="Search campaigns..." 
+               class="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400">
+      </div>
+    </div>
+    
+    <select name="status" class="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white min-w-[140px]" onchange="this.form.submit()">
       <option value="">All statuses</option>
       {% for val, label in status_choices %}<option value="{{ val }}" {% if active_status == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
     </select>
-  </div>
+
+    <select name="template_id" class="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white max-w-[200px] truncate" onchange="this.form.submit()">
+      <option value="">All templates</option>
+      {% for t in templates %}<option value="{{ t.id }}" {% if active_template == t.id|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+    </select>
+    
+    <button type="submit" class="hidden">Search</button>
+  </form>
   <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
       <thead class="bg-gray-50 border-b border-gray-100">

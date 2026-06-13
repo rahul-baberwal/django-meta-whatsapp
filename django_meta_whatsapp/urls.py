@@ -38,6 +38,7 @@ urlpatterns = [
     path("webhook/", views.WebhookView.as_view(), name="webhook"),
     # Settings
     path("settings/accounts/", views.AccountListView.as_view(), name="account_list"),
+    path("settings/accounts/set-global/", views.SetGlobalAccountView.as_view(), name="set_global_account"),
     path("settings/accounts/add/", views.AccountCreateView.as_view(), name="account_create"),
     path("settings/accounts/<int:pk>/edit/", views.AccountUpdateView.as_view(), name="account_update"),
     path("settings/accounts/<int:pk>/delete/", views.AccountDeleteView.as_view(), name="account_delete"),
@@ -50,4 +51,5 @@ urlpatterns = [
     path("api/send-template/", views.APISendTemplateView.as_view(), name="api_send_template"),
     path("api/chats/", views.APIChatsView.as_view(), name="api_chats"),
     path("api/campaigns/", views.APICampaignListView.as_view(), name="api_campaigns"),
+    path("api/templates/<int:pk>/", views.APITemplateDetailsView.as_view(), name="api_template_details"),
 ]

@@ -41,4 +41,16 @@ env/
 {django_meta_whatsapp/
 whatsapp_campaign_csv/
 whatsapp_media/
+node_modules/
 
+
+demo/db.sqlite3
+demo/db.sqlite3-journal
+demo/db.sqlite3-shm
+demo/db.sqlite3-wal
+demo/**/__pycache__
+demo/whatsapp_media/
+demo/whatsapp_campaign_csv/
+.pytest_cache/
+.coverage
+htmlcov/

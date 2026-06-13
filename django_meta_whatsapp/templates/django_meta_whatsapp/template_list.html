@@ -54,6 +54,7 @@
           <td class="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{{ tmpl.body_text|truncatechars:60 }}</td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end gap-2">
+              <button type="button" onclick="document.getElementById('previewModal-{{ tmpl.pk }}').classList.remove('hidden')" class="text-gray-400 hover:text-emerald-600" title="Preview"><i data-lucide="eye" class="w-4 h-4"></i></button>
               <form method="post" action="{% url 'django_meta_whatsapp:template_push' tmpl.pk %}" class="inline">
                 {% csrf_token %}
                 <button type="submit" class="text-gray-400 hover:text-purple-600" title="Push to Meta"><i data-lucide="upload-cloud" class="w-4 h-4"></i></button>
@@ -63,6 +64,40 @@
             </div>
           </td>
         </tr>
+
+        <!-- Preview Modal -->
+        <div id="previewModal-{{ tmpl.pk }}" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm">
+          <div class="bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl flex flex-col max-h-[90vh]">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-gray-900">{{ tmpl.name }}</h3>
+              <button type="button" onclick="document.getElementById('previewModal-{{ tmpl.pk }}').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+              </button>
+            </div>
+            <!-- Body -->
+            <div class="p-6 overflow-y-auto bg-[#efeae2] flex-1 flex flex-col items-start" style="background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');">
+              <div class="bg-white rounded-lg shadow-sm p-3 relative inline-block max-w-[90%] text-sm rounded-tl-none">
+                <div class="absolute top-0 -left-2 w-4 h-4 bg-white" style="clip-path: polygon(100% 0, 0 0, 100% 100%);"></div>
+                {% if tmpl.header %}
+                  <div class="font-bold text-gray-900 mb-1.5">{{ tmpl.header }}</div>
+                {% endif %}
+                <div class="text-gray-800 whitespace-pre-wrap">{{ tmpl.body_text }}</div>
+                {% if tmpl.footer_text %}
+                  <div class="text-gray-500 text-xs mt-1.5">{{ tmpl.footer_text }}</div>
+                {% endif %}
+              </div>
+              {% if tmpl.buttons %}
+                <div class="mt-2 w-full max-w-[90%] space-y-1.5">
+                  {% for btn in tmpl.buttons %}
+                    <div class="bg-white shadow-sm rounded-lg py-2.5 text-center text-[#00a884] font-medium text-sm border border-gray-100">{{ btn.text }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
         {% empty %}
         <tr><td colspan="6" class="px-4 py-12 text-center text-sm text-gray-400">No templates yet. Create one or sync from Meta.</td></tr>
         {% endfor %}

@@ -10,9 +10,9 @@ import uuid
 class WhatsAppAccount(models.Model):
     """
     Supports multi-business: one Django project can host multiple WA accounts
-    (e.g. EasySpin, BaelLeaves, AdsToPlay each get their own account row).
+    (e.g. Business A, Business B each get their own account row).
     """
-    name = models.CharField(max_length=255, help_text="Friendly label, e.g. 'EasySpin Business'")
+    name = models.CharField(max_length=255, help_text="Friendly label, e.g. 'My Business'")
     access_token = models.TextField(help_text="Meta permanent / system-user access token")
     phone_number_id = models.CharField(max_length=100)
     waba_id = models.CharField(max_length=100, blank=True)

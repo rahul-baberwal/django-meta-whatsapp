@@ -5,11 +5,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-meta-whatsapp"
-version = "1.0.0"
+version = "1.0.1"
 description = "Production-ready Django WhatsApp Cloud Platform — Inbox, Campaigns, Templates, Analytics"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
+authors = [
+  {name = "Rahul Baberwal"}
+]
+urls = {Homepage = "https://rahulbaberwal.com", Repository = "https://github.com/rahul-baberwal/django-meta-whatsapp/"}
 dependencies = [
     "Django>=4.0",
     "requests>=2.28",

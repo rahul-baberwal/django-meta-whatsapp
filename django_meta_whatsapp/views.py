@@ -41,15 +41,20 @@ class DashboardView(WALoginMixin, TemplateView):
     template_name = "django_meta_whatsapp/dashboard.html"
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        acc_id = self.request.session.get("wa_account_id")
+        conv_qs = WhatsAppConversation.objects.filter(account_id=acc_id) if acc_id else WhatsAppConversation.objects.all()
+        camp_qs = WhatsAppCampaign.objects.filter(account_id=acc_id) if acc_id else WhatsAppCampaign.objects.all()
+        msg_qs = WhatsAppMessage.objects.filter(account_id=acc_id) if acc_id else WhatsAppMessage.objects.all()
+
         ctx.update({
             "total_contacts": WhatsAppContact.objects.count(),
-            "total_conversations": WhatsAppConversation.objects.count(),
-            "unread_count": WhatsAppConversation.objects.filter(unread_count__gt=0).count(),
-            "total_campaigns": WhatsAppCampaign.objects.count(),
-            "running_campaigns": WhatsAppCampaign.objects.filter(status="running").count(),
-            "messages_today": WhatsAppMessage.objects.filter(timestamp__date=timezone.now().date()).count(),
-            "recent_conversations": WhatsAppConversation.objects.select_related("contact").order_by("-last_message_at")[:5],
-            "recent_campaigns": WhatsAppCampaign.objects.order_by("-created_at")[:5],
+            "total_conversations": conv_qs.count(),
+            "unread_count": conv_qs.filter(unread_count__gt=0).count(),
+            "total_campaigns": camp_qs.count(),
+            "running_campaigns": camp_qs.filter(status="running").count(),
+            "messages_today": msg_qs.filter(timestamp__date=timezone.now().date()).count(),
+            "recent_conversations": conv_qs.select_related("contact").order_by("-last_message_at")[:5],
+            "recent_campaigns": camp_qs.order_by("-created_at")[:5],
         })
         return ctx
 
@@ -59,7 +64,10 @@ class InboxView(WALoginMixin, TemplateView):
     template_name = "django_meta_whatsapp/inbox.html"
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        acc_id = self.request.session.get("wa_account_id")
         qs = WhatsAppConversation.objects.select_related("contact").order_by("-last_message_at")
+        if acc_id:
+            qs = qs.filter(account_id=acc_id)
         q = self.request.GET.get("q", "").strip()
         label = self.request.GET.get("label", "").strip()
         if q:
@@ -229,6 +237,8 @@ class TemplateListView(WALoginMixin, ListView):
     paginate_by = 20
     def get_queryset(self):
         qs = WhatsAppTemplate.objects.all()
+        acc_id = self.request.session.get("wa_account_id")
+        if acc_id: qs = qs.filter(account_id=acc_id)
         q = self.request.GET.get("q","").strip()
         s = self.request.GET.get("status","").strip()
         if q: qs = qs.filter(name__icontains=q)
@@ -241,13 +251,21 @@ class TemplateListView(WALoginMixin, ListView):
 
 class TemplateCreateView(WALoginMixin, CreateView):
     model = WhatsAppTemplate
-    fields = ["account","name","language","category","header","body_text","footer_text","buttons"]
+    fields = ["name","language","category","header","body_text","footer_text","buttons"]
     template_name = "django_meta_whatsapp/template_form.html"
     success_url = reverse_lazy("django_meta_whatsapp:template_list")
 
+    def form_valid(self, form):
+        acc_id = self.request.session.get("wa_account_id")
+        if acc_id:
+            form.instance.account_id = acc_id
+        else:
+            form.instance.account = WhatsAppAccount.objects.filter(is_active=True).first()
+        return super().form_valid(form)
+
 class TemplateUpdateView(WALoginMixin, UpdateView):
     model = WhatsAppTemplate
-    fields = ["account","name","language","category","header","body_text","footer_text","buttons"]
+    fields = ["name","language","category","header","body_text","footer_text","buttons"]
     template_name = "django_meta_whatsapp/template_form.html"
     success_url = reverse_lazy("django_meta_whatsapp:template_list")
 
@@ -258,8 +276,8 @@ class TemplateDeleteView(WALoginMixin, DeleteView):
 
 class TemplateSyncFromMetaView(WALoginMixin, View):
     def post(self, request, *args, **kwargs):
-        aid = request.POST.get("account_id")
-        account = WhatsAppAccount.objects.filter(pk=aid).first() if aid else None
+        aid = request.session.get("wa_account_id")
+        account = WhatsAppAccount.objects.filter(pk=aid).first() if aid else WhatsAppAccount.objects.filter(is_active=True).first()
         try:
             data = sync_templates_from_meta(account=account)
             synced = 0
@@ -291,17 +309,32 @@ class CampaignListView(WALoginMixin, ListView):
     paginate_by = 20
     def get_queryset(self):
         qs = WhatsAppCampaign.objects.select_related("template").all()
+        acc_id = self.request.session.get("wa_account_id")
+        if acc_id: qs = qs.filter(account_id=acc_id)
         s = self.request.GET.get("status","").strip()
+        q = self.request.GET.get("q","").strip()
+        t_id = self.request.GET.get("template_id","").strip()
         if s: qs = qs.filter(status=s)
+        if q: qs = qs.filter(name__icontains=q)
+        if t_id: qs = qs.filter(template_id=t_id)
         return qs
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx.update({"status_choices": WhatsAppCampaign.STATUS_CHOICES, "active_status": self.request.GET.get("status","")})
+        acc_id = self.request.session.get("wa_account_id")
+        templates = WhatsAppTemplate.objects.filter(account_id=acc_id) if acc_id else WhatsAppTemplate.objects.all()
+        ctx.update({
+            "status_choices": WhatsAppCampaign.STATUS_CHOICES, 
+            "active_status": self.request.GET.get("status",""),
+            "search_q": self.request.GET.get("q",""),
+            "active_template": self.request.GET.get("template_id",""),
+            "templates": templates
+        })
         return ctx
 
 class CampaignCreateView(WALoginMixin, CreateView):
     model = WhatsAppCampaign
-    fields = ["account","name","template","audience_type","audience_filters","csv_file","parameter_mappings","scheduled_at"]
+    fields = ["name","template","audience_type","audience_filters","csv_file","parameter_mappings","scheduled_at"]
     template_name = "django_meta_whatsapp/campaign_form.html"
     success_url = reverse_lazy("django_meta_whatsapp:campaign_list")
     def get_context_data(self, **kwargs):
@@ -310,6 +343,14 @@ class CampaignCreateView(WALoginMixin, CreateView):
         wa = getattr(settings, "WHATSAPP", {})
         ctx["audience_choices"] = list(wa.get("AUDIENCES", {}).keys()) + ["contacts","csv"]
         return ctx
+
+    def form_valid(self, form):
+        acc_id = self.request.session.get("wa_account_id")
+        if acc_id:
+            form.instance.account_id = acc_id
+        else:
+            form.instance.account = WhatsAppAccount.objects.filter(is_active=True).first()
+        return super().form_valid(form)
 
 class CampaignUpdateView(WALoginMixin, UpdateView):
     model = WhatsAppCampaign
@@ -355,15 +396,19 @@ class AnalyticsView(WALoginMixin, TemplateView):
         ctx = super().get_context_data(**kwargs)
         today = timezone.now().date()
         last_30 = today - datetime.timedelta(days=29)
+        acc_id = self.request.session.get("wa_account_id")
+        msg_qs = WhatsAppMessage.objects.filter(account_id=acc_id) if acc_id else WhatsAppMessage.objects.all()
+        camp_qs = WhatsAppCampaign.objects.filter(account_id=acc_id) if acc_id else WhatsAppCampaign.objects.all()
+
         ctx.update({
-            "total_sent": WhatsAppMessage.objects.filter(direction="outbound").count(),
-            "total_delivered": WhatsAppMessage.objects.filter(status="delivered").count(),
-            "total_read": WhatsAppMessage.objects.filter(status="read").count(),
-            "total_failed": WhatsAppMessage.objects.filter(status="failed").count(),
-            "campaign_stats": WhatsAppCampaign.objects.filter(status="completed").aggregate(s=Sum("sent_count"), d=Sum("delivered_count"), r=Sum("read_count"), f=Sum("failed_count")),
-            "recent_campaigns": WhatsAppCampaign.objects.filter(status="completed").order_by("-completed_at")[:10],
+            "total_sent": msg_qs.filter(direction="outbound").count(),
+            "total_delivered": msg_qs.filter(status="delivered").count(),
+            "total_read": msg_qs.filter(status="read").count(),
+            "total_failed": msg_qs.filter(status="failed").count(),
+            "campaign_stats": camp_qs.filter(status="completed").aggregate(s=Sum("sent_count"), d=Sum("delivered_count"), r=Sum("read_count"), f=Sum("failed_count")),
+            "recent_campaigns": camp_qs.filter(status="completed").order_by("-completed_at")[:10],
         })
-        daily = (WhatsAppMessage.objects.filter(timestamp__date__gte=last_30).extra(select={"day":"DATE(timestamp)"}).values("day").annotate(count=Count("id")).order_by("day"))
+        daily = (msg_qs.filter(timestamp__date__gte=last_30).extra(select={"day":"DATE(timestamp)"}).values("day").annotate(count=Count("id")).order_by("day"))
         ctx["daily_chart_labels"] = json.dumps([str(d["day"]) for d in daily])
         ctx["daily_chart_data"] = json.dumps([d["count"] for d in daily])
         return ctx
@@ -486,6 +531,15 @@ class AccountDeleteView(WALoginMixin, DeleteView):
     template_name = "django_meta_whatsapp/account_confirm_delete.html"
     success_url = reverse_lazy("django_meta_whatsapp:account_list")
 
+class SetGlobalAccountView(WALoginMixin, View):
+    def post(self, request, *args, **kwargs):
+        account_id = request.POST.get("account_id")
+        next_url = request.POST.get("next", "")
+        if account_id:
+            request.session["wa_account_id"] = int(account_id)
+            messages.success(request, "Active account updated.")
+        return redirect(next_url or "django_meta_whatsapp:dashboard")
+
 
 # ── API Keys ───────────────────────────────────────────────────
 class APIKeyListView(WALoginMixin, ListView):
@@ -550,3 +604,16 @@ class APICampaignListView(_APIAuth, View):
     def get(self, request, *args, **kwargs):
         if not self._ok(request): return JsonResponse({"error":"Unauthorized"},status=401)
         return JsonResponse({"campaigns": list(WhatsAppCampaign.objects.values("id","name","status","sent_count","failed_count","created_at").order_by("-created_at")[:50])})
+
+class APITemplateDetailsView(WALoginMixin, View):
+    def get(self, request, pk, *args, **kwargs):
+        tmpl = get_object_or_404(WhatsAppTemplate, pk=pk)
+        return JsonResponse({
+            "id": tmpl.id,
+            "name": tmpl.name,
+            "language": tmpl.language,
+            "header": tmpl.header,
+            "body_text": tmpl.body_text,
+            "footer_text": tmpl.footer_text,
+            "buttons": tmpl.buttons,
+        })

@@ -4,7 +4,15 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{% block title %}WhatsApp{% endblock %} — django-meta-whatsapp</title>
-  {% load static %}
+  {% load static wa_tags %}
+  {% wa_dashboard_logo as logo_url %}
+  {% if logo_url %}
+  <link rel="icon" href="{{ logo_url }}" />
+  {% else %}
+  <link id="dynamic-favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>" />
+  {% endif %}
+  {% load static wa_tags %}
+  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="{% static 'django_meta_whatsapp/css/tailwind.css' %}">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
@@ -14,16 +22,36 @@
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="h-full bg-gray-50 font-sans">
+<body class="h-full bg-gray-50 font-sans relative">
+{% has_any_accounts as any_acc %}
+{% if not any_acc and request.resolver_match.url_name != 'account_create' %}
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl text-center">
+    <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+      <i data-lucide="building-2" class="w-8 h-8"></i>
+    </div>
+    <h2 class="text-2xl font-bold text-gray-900 mb-2">Welcome! Let's get started.</h2>
+    <p class="text-gray-500 mb-6">Before you can start sending campaigns and messages, you need to configure your first WhatsApp API account.</p>
+    <a href="{% url 'django_meta_whatsapp:account_create' %}" class="block w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-4 rounded-xl transition-colors">
+      Add WhatsApp Account
+    </a>
+  </div>
+</div>
+{% endif %}
 <div class="flex h-full">
   <!-- Sidebar -->
   <aside class="w-64 flex-shrink-0 bg-gray-900 flex flex-col h-screen sticky top-0">
     <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+      {% wa_dashboard_logo as logo_url %}
+      {% if logo_url %}
+      <img src="{{ logo_url }}" alt="Logo" class="w-9 h-9 object-contain rounded-lg">
+      {% else %}
       <div class="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center">
-        <i data-lucide="message-circle" class="w-5 h-5 text-white"></i>
+        <i data-lucide="{% wa_dashboard_icon %}" class="w-5 h-5 text-white"></i>
       </div>
+      {% endif %}
       <div>
-        <p class="text-white font-bold text-sm leading-none">Meta WhatsApp</p>
+        <p class="text-white font-bold text-sm leading-none">{% wa_dashboard_name %}</p>
         <p class="text-gray-400 text-xs mt-0.5">django-meta-whatsapp</p>
       </div>
     </div>
@@ -76,10 +104,13 @@
         <h1 class="text-lg font-semibold text-gray-900">{% block page_title %}Dashboard{% endblock %}</h1>
         {% block page_subtitle %}<p class="text-xs text-gray-400"></p>{% endblock %}
       </div>
-      <div class="flex items-center gap-2">{% block topbar_actions %}{% endblock %}</div>
+      <div class="flex items-center gap-4">
+        {% wa_account_selector %}
+        <div class="flex items-center gap-2">{% block topbar_actions %}{% endblock %}</div>
+      </div>
     </header>
     {% if messages %}
-    <div class="px-6 pt-4 space-y-2">
+    <div id="django-messages-container" class="px-6 pt-4 space-y-2 transition-opacity duration-500">
       {% for message in messages %}
       <div class="flex items-start gap-3 rounded-lg px-4 py-3 text-sm font-medium {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% elif message.tags == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
         <i data-lucide="{% if message.tags == 'error' %}alert-circle{% elif message.tags == 'success' %}check-circle{% else %}info{% endif %}" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
@@ -91,7 +122,29 @@
     <main class="flex-1 overflow-y-auto p-6">{% block content %}{% endblock %}</main>
   </div>
 </div>
-<script>lucide.createIcons();</script>
+<script>
+  lucide.createIcons();
+
+  // Dynamic favicon from Lucide if no logo is set
+  {% if not logo_url %}
+  setTimeout(() => {
+    const iconEl = document.querySelector('i[data-lucide="{% wa_dashboard_icon %}"]');
+    if (iconEl && iconEl.tagName.toLowerCase() === 'svg') {
+      const svgHTML = iconEl.outerHTML.replace('stroke="currentColor"', 'stroke="%23059669"'); // emerald-600
+      const link = document.getElementById('dynamic-favicon');
+      if (link) link.href = 'data:image/svg+xml;utf8,' + encodeURIComponent(svgHTML);
+    }
+  }, 50);
+  {% endif %}
+
+  setTimeout(() => {
+    const msgs = document.getElementById('django-messages-container');
+    if (msgs) {
+      msgs.style.opacity = '0';
+      setTimeout(() => msgs.remove(), 500);
+    }
+  }, 3000);
+</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,22 +1,97 @@
 {% extends "django_meta_whatsapp/base.html" %}
-{% block title %}{% if object %}Edit{% else %}Add{% endif %} {{ name|title }}{% endblock %}
-{% block page_title %}{% if object %}Edit{% else %}Add{% endif %} {% if "account" == "account" %}Account{% else %}API Key{% endif %}{% endblock %}
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Account{% endblock %}
+{% block page_title %}{% if object %}Edit Account{% else %}Add Account{% endif %}{% endblock %}
 {% block content %}
-<div class="max-w-lg">
-  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-    <form method="post">
-      {% csrf_token %}
-      {% for field in form %}
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
-        {{ field }}
-        {% if field.errors %}<p class="text-xs text-red-600 mt-1">{{ field.errors|join:", " }}</p>{% endif %}
-        {% if field.help_text %}<p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>{% endif %}
+<div class="max-w-xl mx-auto">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+        <i data-lucide="building-2" class="w-4 h-4"></i>
       </div>
-      {% endfor %}
-      <div class="flex gap-3 pt-2">
-        <button type="submit" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-5 py-2 rounded-lg"><i data-lucide="save" class="w-4 h-4"></i> Save</button>
-        <a href="{% url 'django_meta_whatsapp:account_list' %}" class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-5 py-2 rounded-lg">Cancel</a>
+      <div>
+        <h2 class="text-sm font-semibold text-gray-900">Account Details</h2>
+        <p class="text-xs text-gray-500">Configure your Meta WhatsApp API credentials.</p>
+      </div>
+    </div>
+    <form method="post" class="p-6">
+      {% csrf_token %}
+      
+      {% if form.non_field_errors %}
+      <div class="mb-6 p-4 rounded-lg bg-red-50 border border-red-100 text-sm text-red-600">
+        {{ form.non_field_errors|join:", " }}
+      </div>
+      {% endif %}
+
+      <div class="space-y-5">
+        <!-- Name -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Account Name <span class="text-red-500">*</span></label>
+          <input type="text" name="{{ form.name.name }}" value="{{ form.name.value|default:'' }}" required
+                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400"
+                 placeholder="e.g. Primary Support Line">
+          {% if form.name.errors %}<p class="text-xs text-red-600 mt-1">{{ form.name.errors|join:", " }}</p>{% endif %}
+          <p class="text-xs text-gray-400 mt-1">A friendly name for this account.</p>
+        </div>
+
+        <!-- Phone Number ID -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone Number ID <span class="text-red-500">*</span></label>
+          <input type="text" name="{{ form.phone_number_id.name }}" value="{{ form.phone_number_id.value|default:'' }}" required
+                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400 font-mono"
+                 placeholder="e.g. 101112131415161">
+          {% if form.phone_number_id.errors %}<p class="text-xs text-red-600 mt-1">{{ form.phone_number_id.errors|join:", " }}</p>{% endif %}
+        </div>
+
+        <!-- WABA ID -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp Business Account ID <span class="text-red-500">*</span></label>
+          <input type="text" name="{{ form.waba_id.name }}" value="{{ form.waba_id.value|default:'' }}" required
+                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400 font-mono"
+                 placeholder="e.g. 201112131415161">
+          {% if form.waba_id.errors %}<p class="text-xs text-red-600 mt-1">{{ form.waba_id.errors|join:", " }}</p>{% endif %}
+        </div>
+
+        <!-- Access Token -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Access Token <span class="text-red-500">*</span></label>
+          <input type="password" name="{{ form.access_token.name }}" value="{{ form.access_token.value|default:'' }}" required
+                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400 font-mono"
+                 placeholder="EAABw...">
+          {% if form.access_token.errors %}<p class="text-xs text-red-600 mt-1">{{ form.access_token.errors|join:", " }}</p>{% endif %}
+          <p class="text-xs text-gray-400 mt-1">Permanent System User token from Meta App Dashboard.</p>
+        </div>
+
+        <!-- Verify Token -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Webhook Verify Token</label>
+          <input type="text" name="{{ form.verify_token.name }}" value="{{ form.verify_token.value|default:'' }}"
+                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400 font-mono"
+                 placeholder="e.g. my_secret_token">
+          {% if form.verify_token.errors %}<p class="text-xs text-red-600 mt-1">{{ form.verify_token.errors|join:", " }}</p>{% endif %}
+          <p class="text-xs text-gray-400 mt-1">Used to verify webhooks for this account. Defaults to global config if empty.</p>
+        </div>
+
+        <!-- Is Active -->
+        {% if form.is_active %}
+        <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-100">
+          <div class="flex items-center h-5">
+            <input type="checkbox" name="{{ form.is_active.name }}" id="id_{{ form.is_active.name }}"
+                   class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                   {% if form.is_active.value %}checked{% endif %}>
+          </div>
+          <div>
+            <label for="id_{{ form.is_active.name }}" class="text-sm font-medium text-gray-900">Active Account</label>
+            <p class="text-xs text-gray-500">Uncheck to disable sending from this account.</p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+        <a href="{% url 'django_meta_whatsapp:account_list' %}" class="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg transition-colors">Cancel</a>
+        <button type="submit" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition-colors shadow-sm">
+          <i data-lucide="save" class="w-4 h-4"></i> Save Account
+        </button>
       </div>
     </form>
   </div>
