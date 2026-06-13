@@ -1,0 +1,22 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Delete Contact{% endblock %}
+{% block page_title %}Delete Contact{% endblock %}
+{% block content %}
+<div class="max-w-md">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center"><i data-lucide="trash-2" class="w-5 h-5 text-red-600"></i></div>
+      <div>
+        <h2 class="text-base font-semibold text-gray-900">Delete contact?</h2>
+        <p class="text-sm text-gray-500">{{ object.name|default:object.phone }}</p>
+      </div>
+    </div>
+    <p class="text-sm text-gray-600 mb-5">This will permanently delete the contact and all associated data. This cannot be undone.</p>
+    <form method="post" class="flex gap-3">
+      {% csrf_token %}
+      <button type="submit" class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-5 py-2 rounded-lg"><i data-lucide="trash-2" class="w-4 h-4"></i> Delete</button>
+      <a href="{% url 'django_meta_whatsapp:contact_list' %}" class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-5 py-2 rounded-lg">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

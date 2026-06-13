@@ -1,0 +1,143 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Chat — {{ phone_number }}{% endblock %}
+{% block page_title %}{{ contact.name|default:phone_number }}{% endblock %}
+{% block page_subtitle %}<p class="text-xs text-gray-400">{{ phone_number }}</p>{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'django_meta_whatsapp:inbox' %}" class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+  <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+</a>
+{% endblock %}
+{% block extra_head %}
+<style>
+.bubble-out{background:#dcfce7;border-radius:1rem 1rem 0.25rem 1rem;max-width:70%;padding:.625rem .875rem;margin-left:auto}
+.bubble-in{background:#fff;border:1px solid #e5e7eb;border-radius:1rem 1rem 1rem 0.25rem;max-width:70%;padding:.625rem .875rem}
+.chat-scroll{height:calc(100vh - 260px);overflow-y:auto;scroll-behavior:smooth}
+</style>
+{% endblock %}
+{% block content %}
+<div class="flex flex-col h-full -mt-6 -mx-6">
+  <!-- Messages -->
+  <div id="chatScroll" class="chat-scroll flex-1 px-6 py-4 space-y-3 bg-gray-50">
+    {% for msg in chat_messages %}
+    <div class="flex {% if msg.direction == 'outbound' %}justify-end{% else %}justify-start{% endif %}">
+      <div class="{% if msg.direction == 'outbound' %}bubble-out{% else %}bubble-in{% endif %} relative group">
+        {% if msg.reply_to %}
+        <div class="text-xs text-gray-400 border-l-2 border-emerald-400 pl-2 mb-1 italic">↩ {{ msg.reply_to.message_body|truncatechars:60 }}</div>
+        {% endif %}
+        {% if msg.is_location %}
+        <div class="flex items-center gap-2 text-sm">
+          <i data-lucide="map-pin" class="w-4 h-4 text-emerald-600 flex-shrink-0"></i>
+          <div>
+            {% if msg.location_name %}<p class="font-medium">{{ msg.location_name }}</p>{% endif %}
+            {% if msg.location_address %}<p class="text-xs text-gray-500">{{ msg.location_address }}</p>{% endif %}
+            <a href="https://maps.google.com/?q={{ msg.location_latitude }},{{ msg.location_longitude }}" target="_blank" class="text-xs text-emerald-600 hover:underline">Open in Maps →</a>
+          </div>
+        </div>
+        {% elif msg.message_type == 'image' and msg.media_file %}
+        <img src="{{ msg.media_file.url }}" class="max-w-xs rounded-lg" alt="Image">
+        {% elif msg.media_file %}
+        <a href="{{ msg.media_file.url }}" class="flex items-center gap-2 text-sm text-emerald-700 hover:underline"><i data-lucide="paperclip" class="w-4 h-4"></i>{{ msg.media_filename|default:"Attachment" }}</a>
+        {% else %}
+        <p class="text-sm text-gray-800 whitespace-pre-wrap">{{ msg.message_body }}</p>
+        {% endif %}
+        <div class="flex items-center justify-end gap-1 mt-1">
+          <span class="text-xs text-gray-400">{{ msg.timestamp|time:"H:i" }}</span>
+          {% if msg.direction == 'outbound' %}
+          <span class="text-xs {% if msg.status == 'read' %}text-blue-500{% elif msg.status == 'delivered' %}text-gray-500{% else %}text-gray-300{% endif %}">
+            {% if msg.status == 'read' %}✓✓{% elif msg.status == 'delivered' %}✓✓{% else %}✓{% endif %}
+          </span>
+          {% endif %}
+        </div>
+        <!-- Delete button -->
+        <form method="post" action="{% url 'django_meta_whatsapp:delete_message' msg.pk %}" class="absolute -top-2 {% if msg.direction == 'outbound' %}-left-8{% else %}-right-8{% endif %} hidden group-hover:block">
+          {% csrf_token %}
+          <button class="w-6 h-6 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center" title="Delete">
+            <i data-lucide="x" class="w-3 h-3 text-red-600"></i>
+          </button>
+        </form>
+      </div>
+    </div>
+    {% empty %}
+    <div class="flex-1 flex items-center justify-center py-20">
+      <div class="text-center">
+        <i data-lucide="message-circle" class="w-12 h-12 text-gray-200 mx-auto mb-3"></i>
+        <p class="text-sm text-gray-400">Start the conversation</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Send form -->
+  <div class="border-t border-gray-200 bg-white px-6 py-4">
+    <form method="post" action="{% url 'django_meta_whatsapp:send_message' phone_number %}" enctype="multipart/form-data" id="sendForm">
+      {% csrf_token %}
+      <input type="hidden" name="reply_to_id" id="replyToId"/>
+      <input type="hidden" name="send_location" id="sendLocationFlag" value="0"/>
+      <input type="hidden" name="latitude" id="lat"/>
+      <input type="hidden" name="longitude" id="lon"/>
+      <input type="hidden" name="location_name" id="locName"/>
+      <input type="hidden" name="location_address" id="locAddr"/>
+
+      <!-- Location preview -->
+      <div id="locationPreview" class="hidden mb-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-700">
+        <i data-lucide="map-pin" class="w-4 h-4 flex-shrink-0"></i>
+        <span id="locationLabel">Location selected</span>
+        <button type="button" onclick="clearLocation()" class="ml-auto text-emerald-600 hover:text-emerald-800"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="flex items-end gap-3">
+        <div class="flex-1 relative">
+          <textarea name="body" id="msgBody" rows="1" placeholder="Type a message…" class="w-full resize-none border border-gray-200 rounded-xl px-4 py-2.5 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" style="min-height:44px;max-height:120px" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+        </div>
+        <!-- Attach -->
+        <label class="cursor-pointer w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors" title="Attach file">
+          <i data-lucide="paperclip" class="w-4 h-4 text-gray-600"></i>
+          <input type="file" name="media_file" class="hidden" id="mediaFile" onchange="showFilePreview(this)"/>
+        </label>
+        <!-- Location -->
+        <button type="button" onclick="shareLocation()" class="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors" title="Share location">
+          <i data-lucide="map-pin" class="w-4 h-4 text-gray-600"></i>
+        </button>
+        <!-- Send -->
+        <button type="submit" class="w-10 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 flex items-center justify-center transition-colors">
+          <i data-lucide="send" class="w-4 h-4 text-white"></i>
+        </button>
+      </div>
+      <div id="filePreview" class="hidden mt-2 text-xs text-gray-500 flex items-center gap-1"><i data-lucide="paperclip" class="w-3 h-3"></i><span id="fileName"></span></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+// Auto-scroll to bottom
+const sc = document.getElementById('chatScroll');
+if(sc) sc.scrollTop = sc.scrollHeight;
+
+function shareLocation(){
+  if(!navigator.geolocation){ alert('Geolocation not supported'); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    document.getElementById('lat').value = pos.coords.latitude;
+    document.getElementById('lon').value = pos.coords.longitude;
+    document.getElementById('sendLocationFlag').value = '1';
+    document.getElementById('locName').value = 'My Location';
+    document.getElementById('locationLabel').textContent = `📍 ${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+    document.getElementById('locationPreview').classList.remove('hidden');
+    lucide.createIcons();
+  }, err=>{ alert('Could not get location: '+err.message); });
+}
+function clearLocation(){
+  document.getElementById('sendLocationFlag').value='0';
+  document.getElementById('lat').value='';
+  document.getElementById('lon').value='';
+  document.getElementById('locationPreview').classList.add('hidden');
+}
+function showFilePreview(input){
+  if(input.files.length){
+    document.getElementById('fileName').textContent = input.files[0].name;
+    document.getElementById('filePreview').classList.remove('hidden');
+  }
+}
+lucide.createIcons();
+</script>
+{% endblock %}

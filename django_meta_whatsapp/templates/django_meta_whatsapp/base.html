@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}WhatsApp{% endblock %} — django-meta-whatsapp</title>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'django_meta_whatsapp/css/tailwind.css' %}">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    .sidebar-link{display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;border-radius:.5rem;font-size:.875rem;font-weight:500;color:#d1d5db;transition:all .15s}
+    .sidebar-link:hover{background:rgba(255,255,255,.1);color:#fff}
+    .sidebar-link.active{background:#059669;color:#fff}
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full bg-gray-50 font-sans">
+<div class="flex h-full">
+  <!-- Sidebar -->
+  <aside class="w-64 flex-shrink-0 bg-gray-900 flex flex-col h-screen sticky top-0">
+    <div class="flex items-center gap-3 px-5 py-5 border-b border-white/10">
+      <div class="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center">
+        <i data-lucide="message-circle" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <p class="text-white font-bold text-sm leading-none">Meta WhatsApp</p>
+        <p class="text-gray-400 text-xs mt-0.5">django-meta-whatsapp</p>
+      </div>
+    </div>
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <a href="{% url 'django_meta_whatsapp:dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+        <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i> Dashboard
+      </a>
+      <a href="{% url 'django_meta_whatsapp:inbox' %}" class="sidebar-link {% if 'inbox' in request.resolver_match.url_name or 'chat_room' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="inbox" class="w-4 h-4 flex-shrink-0"></i> Inbox
+      </a>
+      <a href="{% url 'django_meta_whatsapp:contact_list' %}" class="sidebar-link {% if 'contact' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i> Contacts
+      </a>
+      <a href="{% url 'django_meta_whatsapp:template_list' %}" class="sidebar-link {% if 'template' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="file-text" class="w-4 h-4 flex-shrink-0"></i> Templates
+      </a>
+      <a href="{% url 'django_meta_whatsapp:campaign_list' %}" class="sidebar-link {% if 'campaign' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="send" class="w-4 h-4 flex-shrink-0"></i> Campaigns
+      </a>
+      <a href="{% url 'django_meta_whatsapp:analytics' %}" class="sidebar-link {% if 'analytics' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="bar-chart-2" class="w-4 h-4 flex-shrink-0"></i> Analytics
+      </a>
+      <div class="pt-4 pb-1">
+        <p class="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Settings</p>
+      </div>
+      <a href="{% url 'django_meta_whatsapp:account_list' %}" class="sidebar-link {% if 'account' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="building-2" class="w-4 h-4 flex-shrink-0"></i> Accounts
+      </a>
+      <a href="{% url 'django_meta_whatsapp:apikey_list' %}" class="sidebar-link {% if 'apikey' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="key" class="w-4 h-4 flex-shrink-0"></i> API Keys
+      </a>
+    </nav>
+    <div class="px-3 py-4 border-t border-white/10">
+      <div class="flex items-center gap-3 px-2">
+        <div class="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold">
+          {{ request.user.username|first|upper }}
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-white font-medium truncate">{{ request.user.username }}</p>
+          <p class="text-xs text-gray-400 truncate">{{ request.user.email }}</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="flex-1 flex flex-col overflow-hidden min-h-screen">
+    <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+      <div>
+        <h1 class="text-lg font-semibold text-gray-900">{% block page_title %}Dashboard{% endblock %}</h1>
+        {% block page_subtitle %}<p class="text-xs text-gray-400"></p>{% endblock %}
+      </div>
+      <div class="flex items-center gap-2">{% block topbar_actions %}{% endblock %}</div>
+    </header>
+    {% if messages %}
+    <div class="px-6 pt-4 space-y-2">
+      {% for message in messages %}
+      <div class="flex items-start gap-3 rounded-lg px-4 py-3 text-sm font-medium {% if message.tags == 'error' %}bg-red-50 text-red-700 border border-red-200{% elif message.tags == 'success' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}bg-blue-50 text-blue-700 border border-blue-200{% endif %}">
+        <i data-lucide="{% if message.tags == 'error' %}alert-circle{% elif message.tags == 'success' %}check-circle{% else %}info{% endif %}" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+        {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <main class="flex-1 overflow-y-auto p-6">{% block content %}{% endblock %}</main>
+  </div>
+</div>
+<script>lucide.createIcons();</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "django-meta-whatsapp"
+version = "1.0.0"
+description = "Production-ready Django WhatsApp Cloud Platform — Inbox, Campaigns, Templates, Analytics"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+dependencies = [
+    "Django>=4.0",
+    "requests>=2.28",
+]
+
+[project.optional-dependencies]
+celery = ["celery>=5.0", "django-celery-beat>=2.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["django_meta_whatsapp*"]
+
+[tool.setuptools.package-data]
+django_meta_whatsapp = ["templates/**/*", "templatetags/*", "static/**/*"]

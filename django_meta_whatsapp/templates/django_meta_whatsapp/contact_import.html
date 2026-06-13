@@ -1,0 +1,25 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Import Contacts{% endblock %}
+{% block page_title %}Import Contacts{% endblock %}
+{% block content %}
+<div class="max-w-lg space-y-6">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+    <h2 class="text-sm font-semibold text-gray-900 mb-4">Upload CSV File</h2>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-sm text-blue-700">
+      <p class="font-medium mb-1">Expected CSV columns:</p>
+      <code class="text-xs">phone, name, email, tags</code>
+      <p class="text-xs mt-1 text-blue-600">Only <code>phone</code> is required. Tags should be comma-separated within the cell.</p>
+    </div>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">CSV File</label>
+        <input type="file" name="csv_file" accept=".csv" class="block w-full text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2 file:mr-3 file:text-sm file:font-medium file:bg-emerald-50 file:text-emerald-700 file:border-0 file:rounded file:px-3 file:py-1"/>
+      </div>
+      <button type="submit" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-5 py-2 rounded-lg">
+        <i data-lucide="upload" class="w-4 h-4"></i> Import
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

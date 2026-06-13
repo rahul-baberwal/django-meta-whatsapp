@@ -1,0 +1,31 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}{% if object %}Edit{% else %}New{% endif %} Template{% endblock %}
+{% block page_title %}{% if object %}Edit Template{% else %}New Template{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-2xl">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+    <form method="post">
+      {% csrf_token %}
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        {% for field in form %}
+        <div class="{% if field.name == 'body_text' or field.name == 'header' or field.name == 'buttons' %}col-span-2{% endif %} mb-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<p class="text-xs text-red-600 mt-1">{{ field.errors|join:", " }}</p>{% endif %}
+          {% if field.help_text %}<p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-5 text-xs text-amber-700">
+        <strong>Tip:</strong> Use <code>{{1}}</code>, <code>{{2}}</code> in the body text for dynamic variables. The <code>header</code> and <code>buttons</code> fields accept JSON — leave blank if not needed.
+      </div>
+      <div class="flex gap-3">
+        <button type="submit" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-5 py-2 rounded-lg">
+          <i data-lucide="save" class="w-4 h-4"></i> Save Template
+        </button>
+        <a href="{% url 'django_meta_whatsapp:template_list' %}" class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-5 py-2 rounded-lg">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

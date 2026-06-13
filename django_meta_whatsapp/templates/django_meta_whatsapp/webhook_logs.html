@@ -1,0 +1,30 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Webhook Logs{% endblock %}
+{% block page_title %}Webhook Logs{% endblock %}
+{% block content %}
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+  <table class="w-full">
+    <thead class="bg-gray-50 border-b border-gray-100">
+      <tr>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Received</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Processed</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Error</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for log in logs %}
+      <tr class="hover:bg-gray-50">
+        <td class="px-4 py-3 text-sm text-gray-700">{{ log.received_at }}</td>
+        <td class="px-4 py-3">
+          {% if log.processed %}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Yes</span>
+          {% else %}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">No</span>{% endif %}
+        </td>
+        <td class="px-4 py-3 text-xs text-red-500">{{ log.error|default:"" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="3" class="px-4 py-12 text-center text-sm text-gray-400">No webhook logs yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

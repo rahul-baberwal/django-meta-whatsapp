@@ -1,0 +1,134 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Analytics{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- Overall stats -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Sent</span>
+        <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center"><i data-lucide="send" class="w-4 h-4 text-emerald-600"></i></div>
+      </div>
+      <p class="text-3xl font-bold text-gray-900">{{ total_sent }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivered</span>
+        <div class="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center"><i data-lucide="check-check" class="w-4 h-4 text-blue-600"></i></div>
+      </div>
+      <p class="text-3xl font-bold text-gray-900">{{ total_delivered }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Read</span>
+        <div class="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center"><i data-lucide="eye" class="w-4 h-4 text-purple-600"></i></div>
+      </div>
+      <p class="text-3xl font-bold text-gray-900">{{ total_read }}</p>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Failed</span>
+        <div class="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center"><i data-lucide="alert-circle" class="w-4 h-4 text-red-600"></i></div>
+      </div>
+      <p class="text-3xl font-bold text-gray-900">{{ total_failed }}</p>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <h2 class="text-sm font-semibold text-gray-900 mb-4">Messages — Last 30 Days</h2>
+    <canvas id="dailyChart" height="80"></canvas>
+  </div>
+
+  <!-- Campaign stats -->
+  {% if campaign_stats %}
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+    <h2 class="text-sm font-semibold text-gray-900 mb-4">Campaign Aggregate (Completed)</h2>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="text-center p-3 bg-gray-50 rounded-lg">
+        <p class="text-2xl font-bold text-gray-900">{{ campaign_stats.s|default:0 }}</p>
+        <p class="text-xs text-gray-500 mt-1">Sent</p>
+      </div>
+      <div class="text-center p-3 bg-gray-50 rounded-lg">
+        <p class="text-2xl font-bold text-blue-600">{{ campaign_stats.d|default:0 }}</p>
+        <p class="text-xs text-gray-500 mt-1">Delivered</p>
+      </div>
+      <div class="text-center p-3 bg-gray-50 rounded-lg">
+        <p class="text-2xl font-bold text-purple-600">{{ campaign_stats.r|default:0 }}</p>
+        <p class="text-xs text-gray-500 mt-1">Read</p>
+      </div>
+      <div class="text-center p-3 bg-gray-50 rounded-lg">
+        <p class="text-2xl font-bold text-red-500">{{ campaign_stats.f|default:0 }}</p>
+        <p class="text-xs text-gray-500 mt-1">Failed</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Recent campaigns table -->
+  {% if recent_campaigns %}
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100"><h2 class="text-sm font-semibold text-gray-900">Recent Completed Campaigns</h2></div>
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Campaign</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Sent</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivered</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Read</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Failed</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Completed</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for camp in recent_campaigns %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ camp.name }}</td>
+          <td class="px-4 py-3 text-sm text-gray-700">{{ camp.sent_count }}</td>
+          <td class="px-4 py-3 text-sm text-blue-600">{{ camp.delivered_count }}</td>
+          <td class="px-4 py-3 text-sm text-purple-600">{{ camp.read_count }}</td>
+          <td class="px-4 py-3 text-sm text-red-500">{{ camp.failed_count }}</td>
+          <td class="px-4 py-3 text-sm text-gray-400">{{ camp.completed_at|date:"d M Y" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+const labels = {{ daily_chart_labels|safe }};
+const data = {{ daily_chart_data|safe }};
+new Chart(document.getElementById('dailyChart'), {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Messages',
+      data,
+      borderColor: '#059669',
+      backgroundColor: 'rgba(5,150,105,0.08)',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 3,
+      pointBackgroundColor: '#059669',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+      y: { grid: { color: '#f3f4f6' }, ticks: { font: { size: 11 } }, beginAtZero: true }
+    }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Accounts{% endblock %}
+{% block page_title %}WhatsApp Accounts{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'django_meta_whatsapp:account_create' %}" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+  <i data-lucide="plus" class="w-4 h-4"></i> Add Account
+</a>
+{% endblock %}
+{% block content %}
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+  <table class="w-full">
+    <thead class="bg-gray-50 border-b border-gray-100">
+      <tr>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Name</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone Number ID</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">WABA ID</th>
+        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+        <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+      {% for account in accounts %}
+      <tr class="hover:bg-gray-50">
+        <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ account.name }}</td>
+        <td class="px-4 py-3 text-sm font-mono text-gray-500">{{ account.phone_number_id }}</td>
+        <td class="px-4 py-3 text-sm font-mono text-gray-500">{{ account.waba_id|default:"—" }}</td>
+        <td class="px-4 py-3">
+          {% if account.is_active %}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Active</span>
+          {% else %}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Inactive</span>{% endif %}
+        </td>
+        <td class="px-4 py-3 text-right">
+          <div class="flex items-center justify-end gap-2">
+            <a href="{% url 'django_meta_whatsapp:account_update' account.pk %}" class="text-gray-400 hover:text-blue-600"><i data-lucide="pencil" class="w-4 h-4"></i></a>
+            <a href="{% url 'django_meta_whatsapp:account_delete' account.pk %}" class="text-gray-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></a>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="px-4 py-12 text-center text-sm text-gray-400">No accounts configured yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="px-5 py-4 border-t border-gray-100 bg-blue-50">
+    <p class="text-xs text-blue-700">
+      <strong>Webhook URL for each account:</strong><br/>
+      <code>{{ request.scheme }}://{{ request.get_host }}{% url 'django_meta_whatsapp:webhook' %}</code>
+    </p>
+  </div>
+</div>
+{% endblock %}
