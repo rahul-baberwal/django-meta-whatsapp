@@ -105,12 +105,27 @@
           {% if form.audience_type.errors %}<p class="text-xs text-red-500 mt-1.5">{{ form.audience_type.errors|join:", " }}</p>{% endif %}
           
           <!-- Conditional: Audience Filters (for contacts/custom providers) -->
-          <div id="audienceFiltersContainer" class="mt-4">
-            <label class="block text-sm font-semibold text-gray-700 mb-1.5">Audience Filters (JSON)</label>
-            <input type="text" name="audience_filters" id="id_audience_filters" value="{{ form.audience_filters.value|default_if_none:'{}' }}"
-                   class="w-full font-mono px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none bg-gray-50/50 focus:bg-white text-xs"
-                   placeholder='{"tags__contains": ["vip"]}'>
-            <p class="text-[11px] text-gray-400 mt-1.5">Provide a JSON object of filter kwargs.</p>
+          <div id="audienceFiltersContainer" class="mt-4 space-y-3">
+            {% if contact_filters %}
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Filter Preset
+                <span class="ml-1 text-[10px] text-blue-500 font-normal">(defined in settings)</span>
+              </label>
+              <select id="filterPresetSelect" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none bg-gray-50/50 focus:bg-white text-sm">
+                <option value="">— No preset (manual JSON) —</option>
+                {% for label, filter_json in contact_filters.items %}
+                <option value="{{ filter_json|escapejs }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-1.5">Audience Filters <span class="font-normal text-gray-400">(JSON)</span></label>
+              <input type="text" name="audience_filters" id="id_audience_filters" value="{{ form.audience_filters.value|default_if_none:'{}' }}"
+                     class="w-full font-mono px-4 py-2.5 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none bg-gray-50/50 focus:bg-white text-xs"
+                     placeholder='{"labels__name": "VIP"}'>
+              <p class="text-[11px] text-gray-400 mt-1.5">Django ORM filter kwargs as JSON — applied to <code>WhatsAppContact</code>. Select a preset above or write your own.</p>
+            </div>
           </div>
 
           <!-- Conditional: CSV File Upload (for csv) -->
@@ -225,6 +240,19 @@ document.addEventListener('DOMContentLoaded', function() {
       direction: "asc"
     }
   });
+
+  // Wire up filter preset dropdown → JSON field
+  const presetSelect = document.getElementById('filterPresetSelect');
+  const filterInput = document.getElementById('id_audience_filters');
+  if (presetSelect && filterInput) {
+    presetSelect.addEventListener('change', function() {
+      if (this.value) {
+        filterInput.value = this.value;
+      } else {
+        filterInput.value = '{}';
+      }
+    });
+  }
 });
 
 document.addEventListener('DOMContentLoaded', () => {

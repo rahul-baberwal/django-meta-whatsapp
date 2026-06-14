@@ -83,6 +83,8 @@
       <a href="#ui-customization" class="sidebar-link">UI Customization</a>
       <a href="#multi-account" class="sidebar-link">Multi-Account Support</a>
       <a href="#audiences" class="sidebar-link">Pluggable Audiences</a>
+      <a href="#user-model" class="sidebar-link">Link Your User Model</a>
+      <a href="#contact-filters" class="sidebar-link">Contact Filter Presets</a>
       
       <div class="nav-group">Developer API</div>
       <a href="#rest-api" class="sidebar-link">REST API Endpoints</a>
@@ -420,6 +422,158 @@ def resolve_campaign(campaign):
         qs = Customer.objects.filter(total_orders__gt=10)
         return [{"phone": c.mobile, "name": c.full_name, "params": {}} for c in qs]
     return []</code></pre>
+      </section>
+
+      <!-- ─── NEW: Link Your User Model ─── -->
+      <section id="user-model">
+        <h2>Linking Your Django User Model</h2>
+        <p>By default, <code>WhatsAppContact</code> is a standalone model. You can link it to your existing Django user model in one of three ways — all without modifying the package source.</p>
+
+        <h3>Option 1: OneToOneField in Your Own Model</h3>
+        <p>The cleanest pattern. Create a profile model in your own app that links to both your user and the WhatsApp contact.</p>
+        <div class="card">
+          <h3 class="mt-0 text-white">Creating a WhatsApp Profile</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python"># myapp/models.py
+from django.db import models
+from django.conf import settings
+from django_meta_whatsapp.models import WhatsAppContact
+
+class UserWhatsAppProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="whatsapp_profile"
+    )
+    contact = models.OneToOneField(
+        WhatsAppContact,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="user_profile"
+    )
+
+    def __str__(self):
+        return f"{self.user.username} — {self.contact}"</code></pre>
+          <p class="text-sm text-gray-400">You can then access the contact from any user instance: <code>request.user.whatsapp_profile.contact</code></p>
+        </div>
+
+        <h3>Option 2: Auto-Link on User Registration (via Signals)</h3>
+        <p>Automatically create or link a contact when a user registers, so new signups are immediately ready for WhatsApp campaigns.</p>
+        <div class="card">
+          <h3 class="mt-0 text-white">Auto-Create Contact on User Registration</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python"># myapp/signals.py
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.conf import settings
+from django_meta_whatsapp.models import WhatsAppContact
+
+User = settings.AUTH_USER_MODEL
+
+@receiver(post_save, sender=User)
+def create_whatsapp_contact(sender, instance, created, **kwargs):
+    if created and instance.phone_number:  # adjust field name to your User model
+        contact, _ = WhatsAppContact.objects.get_or_create(
+            phone=instance.phone_number,
+            defaults={"name": instance.get_full_name() or instance.username}
+        )
+        # Optionally link back
+        UserWhatsAppProfile.objects.get_or_create(user=instance, contact=contact)</code></pre>
+        </div>
+
+        <h3>Option 3: Use AUDIENCES to Query Your User Model Directly</h3>
+        <p>Don't bother with <code>WhatsAppContact</code> at all — plug your own <code>User</code> queryset directly into campaigns using the audience provider system.</p>
+        <div class="card">
+          <h3 class="mt-0 text-white">settings.py</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">WHATSAPP = {
+    "PHONE_FIELD": "phone_number",  # field on your User model
+    "NAME_FIELD": "full_name",      # field on your User model
+    "AUDIENCES": {
+        "All Users": "myapp.audiences.all_users",
+        "Premium Users": "myapp.audiences.premium_users",
+    },
+}</code></pre>
+          <h3 class="text-white">myapp/audiences.py</h3>
+<pre class="m-0 border-none bg-black/30"><code class="language-python">from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+def all_users():
+    return User.objects.filter(is_active=True, phone_number__isnull=False)
+
+def premium_users():
+    return User.objects.filter(is_active=True, subscription_tier="premium")</code></pre>
+        </div>
+
+        <h3>Querying Contacts Programmatically</h3>
+        <div class="card">
+          <h3 class="mt-0 text-white">Common Filter Patterns</h3>
+<pre class="m-0 border-none bg-black/30"><code class="language-python">from django_meta_whatsapp.models import WhatsAppContact, WhatsAppLabel
+
+# All opted-in, unblocked contacts
+contacts = WhatsAppContact.objects.filter(opted_out=False, is_blocked=False)
+
+# Contacts with a specific label
+vip_label = WhatsAppLabel.objects.get(name="VIP")
+vip_contacts = contacts.filter(labels=vip_label)
+
+# Contacts who signed up via a specific link
+contacts.filter(subscribed_via_signup__display_name="Website Banner")
+
+# Contacts created in the last 30 days
+from django.utils import timezone
+from datetime import timedelta
+new_contacts = contacts.filter(created_at__gte=timezone.now() - timedelta(days=30))
+
+# Get the linked Django User (if you've created the UserWhatsAppProfile model)
+for contact in vip_contacts:
+    user = contact.user_profile.user  # via related_name
+    print(user.email, contact.phone)</code></pre>
+        </div>
+      </section>
+
+      <!-- ─── NEW: Contact Filter Presets ─── -->
+      <section id="contact-filters">
+        <h2>Contact Filter Presets for Campaigns</h2>
+        <p>You can pre-define named audience filters in your <code>settings.py</code>. These appear as a friendly <strong>dropdown</strong> inside the Campaign form, so marketers don't need to write JSON manually.</p>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Defining Filter Presets in settings.py</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python"># settings.py
+WHATSAPP = {
+    # ... other settings ...
+
+    "CONTACT_FILTERS": {
+        "VIP Customers": '{"labels__name": "VIP"}',
+        "Subscribed via Website": '{"subscribed_via_signup__isnull": false}',
+        "New This Month": '{"created_at__gte": "2024-06-01"}',
+        "Premium + Not Blocked": '{"labels__name": "Premium", "is_blocked": false}',
+    },
+}</code></pre>
+          <p class="text-sm text-gray-400">Keys are human-readable dropdown labels. Values are JSON strings of Django ORM <code>filter()</code> kwargs applied to <code>WhatsAppContact</code>.</p>
+        </div>
+
+        <h3>How it Works in the Campaign Form</h3>
+        <ol>
+          <li>Create a new Campaign and set <strong>Audience Type</strong> to <code>contacts</code>.</li>
+          <li>A <strong>Filter Preset</strong> dropdown appears (only if you've defined <code>CONTACT_FILTERS</code> in settings).</li>
+          <li>Select a preset and the <strong>Audience Filters JSON</strong> field is auto-populated.</li>
+          <li>You can still manually edit the JSON for one-off custom queries.</li>
+        </ol>
+
+        <h3>Supported Filter Examples</h3>
+        <div class="card">
+          <h3 class="mt-0 text-white">Filter by Label</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-json">{"labels__name": "VIP"}</code></pre>
+          <h3 class="text-white">Filter by Multiple Labels</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-json">{"labels__name__in": ["VIP", "Premium"]}</code></pre>
+          <h3 class="text-white">Filter Contacts Created After a Date</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-json">{"created_at__gte": "2024-01-01"}</code></pre>
+          <h3 class="text-white">Exclude Opted-Out Contacts</h3>
+<pre class="m-0 border-none bg-black/30"><code class="language-json">{"opted_out": false, "is_blocked": false}</code></pre>
+        </div>
+
+        <div class="callout callout-info mt-6">
+          <strong>Note:</strong> All filters are passed directly to Django's <code>WhatsAppContact.objects.filter(**kwargs)</code>. Standard Django ORM lookups like <code>__gt</code>, <code>__gte</code>, <code>__in</code>, <code>__isnull</code>, <code>__contains</code> are all supported.
+        </div>
       </section>
 
       <section id="rest-api">

@@ -586,6 +586,8 @@ class CampaignCreateView(WALoginMixin, CreateView):
         ctx = super().get_context_data(**kwargs)
         wa = getattr(settings, "WHATSAPP", {})
         ctx["audience_choices"] = list(wa.get("AUDIENCES", {}).keys()) + ["contacts","csv"]
+        # Named contact filters defined in settings for the dropdown UI
+        ctx["contact_filters"] = wa.get("CONTACT_FILTERS", {})
         return ctx
 
     def form_valid(self, form):
@@ -601,6 +603,13 @@ class CampaignUpdateView(WALoginMixin, UpdateView):
     fields = ["name","template","audience_type","audience_filters","csv_file","parameter_mappings","scheduled_at"]
     template_name = "django_meta_whatsapp/campaign_form.html"
     success_url = reverse_lazy("django_meta_whatsapp:campaign_list")
+    def get_context_data(self, **kwargs):
+        from django.conf import settings
+        ctx = super().get_context_data(**kwargs)
+        wa = getattr(settings, "WHATSAPP", {})
+        ctx["audience_choices"] = list(wa.get("AUDIENCES", {}).keys()) + ["contacts","csv"]
+        ctx["contact_filters"] = wa.get("CONTACT_FILTERS", {})
+        return ctx
 
 class CampaignDetailView(WALoginMixin, DetailView):
     model = WhatsAppCampaign
