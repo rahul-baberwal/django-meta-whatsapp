@@ -1,8 +1,12 @@
 {% if accounts %}
 <div class="relative" id="wa-global-account-selector">
   <button type="button" class="flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500" onclick="document.getElementById('wa-account-dropdown').classList.toggle('hidden')">
+    {% if active_account.profile_picture_url %}
+    <img src="{{ active_account.profile_picture_url }}" class="w-5 h-5 rounded-full object-cover">
+    {% else %}
     <i data-lucide="building-2" class="w-4 h-4 text-gray-500"></i>
-    <span class="max-w-[150px] truncate">{{ active_account.name|default:"Select Account" }}</span>
+    {% endif %}
+    <span class="max-w-[150px] truncate">{{ active_account.profile_name|default:active_account.name|default:"Select Account" }}</span>
     <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400"></i>
   </button>
   
@@ -18,11 +22,15 @@
         <input type="hidden" name="next" value="{{ request.get_full_path }}">
         <button type="submit" class="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-emerald-50 transition-colors {% if active_account.id == account.id %}bg-emerald-50{% endif %}">
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
+            {% if account.profile_picture_url %}
+            <img src="{{ account.profile_picture_url }}" class="w-8 h-8 rounded-full object-cover shadow-sm">
+            {% else %}
+            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs shadow-sm">
               {{ account.name|first|upper }}
             </div>
+            {% endif %}
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900 truncate">{{ account.name }}</p>
+              <p class="text-sm font-medium text-gray-900 truncate">{{ account.profile_name|default:account.name }}</p>
               <p class="text-xs text-gray-500 truncate">{{ account.phone_number_id }}</p>
             </div>
           </div>

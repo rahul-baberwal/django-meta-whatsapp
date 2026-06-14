@@ -69,12 +69,19 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- django-meta-whatsapp settings ---
+
+# Option 1: Single-account (Credentials in settings.py)
 WHATSAPP = {
+    # If using Option 2 (Multi-account UI), leave these empty or omit them!
     "ACCESS_TOKEN": "dummy_token",
     "PHONE_NUMBER_ID": "dummy_phone_id",
     "WABA_ID": "dummy_waba_id",
     "VERIFY_TOKEN": "dummy_verify_token",
+    
+    # Required for both options:
     "LOGIN_URL": "/admin/login/",  # For testing, require admin login
+    
+    # Pluggable Audience System (Optional)
     "AUDIENCES": {
         "test_users": {
             "get_queryset": "django.contrib.auth.models.User.objects.all",
@@ -83,3 +90,8 @@ WHATSAPP = {
         }
     }
 }
+
+# Optional Dashboard Customization
+# META_WHATSAPP_DASHBOARD_NAME = "My Awesome Agency"
+# META_WHATSAPP_DASHBOARD_ICON = "building-2"
+# META_WHATSAPP_ACCENT_COLOR = "142, 72%, 45%"

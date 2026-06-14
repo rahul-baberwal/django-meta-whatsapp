@@ -16,7 +16,7 @@
     </div>
     <select name="label" onchange="this.form.submit()" class="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
       <option value="">All labels</option>
-      {% for val, label in label_choices %}<option value="{{ val }}" {% if active_label == val %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      {% for lbl in all_labels %}<option value="{{ lbl.name }}" {% if active_label == lbl.name %}selected{% endif %}>{{ lbl.name|title }}</option>{% endfor %}
     </select>
   </form>
 
@@ -29,7 +29,7 @@
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2">
           <p class="text-sm font-semibold text-gray-900">{{ conv.contact.name|default:conv.phone_number }}</p>
-          {% if conv.label %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{{ conv.label }}</span>{% endif %}
+          {% if conv.label %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">{{ conv.label.name|title }}</span>{% endif %}
         </div>
         <p class="text-xs text-gray-400 mt-0.5">{{ conv.phone_number }}</p>
       </div>

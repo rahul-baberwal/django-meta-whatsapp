@@ -10,7 +10,11 @@ urlpatterns = [
     path("inbox/<str:phone_number>/", views.ChatRoomView.as_view(), name="chat_room"),
     path("inbox/<str:phone_number>/send/", views.SendMessageView.as_view(), name="send_message"),
     path("inbox/message/<int:pk>/delete/", views.DeleteMessageView.as_view(), name="delete_message"),
-    path("inbox/conversation/<int:pk>/label/", views.UpdateConversationLabelView.as_view(), name="update_label"),
+    # Labels
+    path("labels/", views.LabelListView.as_view(), name="label_list"),
+    path("labels/add/", views.LabelCreateView.as_view(), name="label_create"),
+    path("labels/<int:pk>/edit/", views.LabelUpdateView.as_view(), name="label_update"),
+    path("labels/<int:pk>/delete/", views.LabelDeleteView.as_view(), name="label_delete"),
     # Contacts
     path("contacts/", views.ContactListView.as_view(), name="contact_list"),
     path("contacts/add/", views.ContactCreateView.as_view(), name="contact_create"),
@@ -18,6 +22,18 @@ urlpatterns = [
     path("contacts/<int:pk>/delete/", views.ContactDeleteView.as_view(), name="contact_delete"),
     path("contacts/import/", views.ContactImportView.as_view(), name="contact_import"),
     path("contacts/export/", views.ContactExportView.as_view(), name="contact_export"),
+    # Blocked Users
+    path("contacts/blocked/", views.BlockedUserListView.as_view(), name="blocked_list"),
+    path("contacts/blocked/sync/", views.SyncBlockedUsersView.as_view(), name="blocked_sync"),
+    path("contacts/<str:phone>/block/", views.BlockUserView.as_view(), name="contact_block"),
+    path("contacts/<str:phone>/unblock/", views.UnblockUserView.as_view(), name="contact_unblock"),
+    path("contacts/bulk-block/", views.BulkBlockUsersView.as_view(), name="bulk_block"),
+    path("contacts/bulk-unblock/", views.BulkUnblockUsersView.as_view(), name="bulk_unblock"),
+    # Signups
+    path("signups/", views.SignupListView.as_view(), name="signup_list"),
+    path("signups/add/", views.SignupCreateView.as_view(), name="signup_create"),
+    path("signups/<int:pk>/edit/", views.SignupUpdateView.as_view(), name="signup_update"),
+    path("signups/<int:pk>/disable/", views.SignupDisableView.as_view(), name="signup_disable"),
     # Templates
     path("templates/", views.TemplateListView.as_view(), name="template_list"),
     path("templates/add/", views.TemplateCreateView.as_view(), name="template_create"),
@@ -25,6 +41,12 @@ urlpatterns = [
     path("templates/<int:pk>/delete/", views.TemplateDeleteView.as_view(), name="template_delete"),
     path("templates/sync/", views.TemplateSyncFromMetaView.as_view(), name="template_sync"),
     path("templates/<int:pk>/push/", views.TemplatePushToMetaView.as_view(), name="template_push"),
+    # Catalog
+    path("catalog/", views.CatalogProductListView.as_view(), name="catalog_list"),
+    path("catalog/add/", views.CatalogProductCreateView.as_view(), name="catalog_create"),
+    path("catalog/<int:pk>/edit/", views.CatalogProductUpdateView.as_view(), name="catalog_update"),
+    path("catalog/<int:pk>/delete/", views.CatalogProductDeleteView.as_view(), name="catalog_delete"),
+    path("catalog/sync/", views.CatalogProductSyncView.as_view(), name="catalog_sync"),
     # Campaigns
     path("campaigns/", views.CampaignListView.as_view(), name="campaign_list"),
     path("campaigns/add/", views.CampaignCreateView.as_view(), name="campaign_create"),
@@ -52,4 +74,7 @@ urlpatterns = [
     path("api/chats/", views.APIChatsView.as_view(), name="api_chats"),
     path("api/campaigns/", views.APICampaignListView.as_view(), name="api_campaigns"),
     path("api/templates/<int:pk>/", views.APITemplateDetailsView.as_view(), name="api_template_details"),
+    path("api/block/", views.APIBlockUserView.as_view(), name="api_block"),
+    path("api/unblock/", views.APIUnblockUserView.as_view(), name="api_unblock"),
+    path("api/blocked/", views.APIBlockedUserListView.as_view(), name="api_blocked"),
 ]

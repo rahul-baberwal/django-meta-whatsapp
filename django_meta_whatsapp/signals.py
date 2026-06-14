@@ -14,3 +14,4 @@ from django.dispatch import Signal
 whatsapp_message_received = Signal()   # kwargs: message (WhatsAppMessage)
 whatsapp_message_sent = Signal()       # kwargs: message (WhatsAppMessage)
 whatsapp_campaign_completed = Signal() # kwargs: campaign (WhatsAppCampaign), sent, failed
+whatsapp_user_subscribed = Signal()    # kwargs: contact (WhatsAppContact), signup (WhatsAppSignup)

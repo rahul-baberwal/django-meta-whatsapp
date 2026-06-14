@@ -71,6 +71,16 @@
           <p class="text-xs text-gray-400 mt-1">Used to verify webhooks for this account. Defaults to global config if empty.</p>
         </div>
 
+        <!-- Default Catalog ID -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Default Meta Catalog ID</label>
+          <input type="text" name="{{ form.default_catalog_id.name }}" value="{{ form.default_catalog_id.value|default:'' }}"
+                 class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400 font-mono"
+                 placeholder="e.g. 101010101010101">
+          {% if form.default_catalog_id.errors %}<p class="text-xs text-red-600 mt-1">{{ form.default_catalog_id.errors|join:", " }}</p>{% endif %}
+          <p class="text-xs text-gray-400 mt-1">Default Commerce Catalog ID to use when creating or syncing products.</p>
+        </div>
+
         <!-- Is Active -->
         {% if form.is_active %}
         <div class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-100">

@@ -423,7 +423,7 @@ def resolve_audience(campaign) -> list:
     # 3. Built-in: WhatsAppContact records
     if campaign.audience_type == "contacts":
         from .models import WhatsAppContact
-        qs = WhatsAppContact.objects.filter(opted_out=False)
+        qs = WhatsAppContact.objects.filter(opted_out=False, is_blocked=False)
         if campaign.audience_filters:
             qs = qs.filter(**campaign.audience_filters)
         return [
@@ -532,3 +532,395 @@ def run_campaign_async(campaign_id: int, account_id: int | None = None):
         except ImportError:
             pass
     return run_campaign(campaign_id)
+
+
+# ─────────────────────────────────────────────
+# Product and Catalog Messages
+# ─────────────────────────────────────────────
+
+def sync_catalog_products(catalog_id: str, account=None) -> dict:
+    """Fetch all products for a given Meta Catalog ID and update local mirror."""
+    token, phone_id = _get_credentials(account)
+    from .models import WhatsAppCatalogProduct
+    
+    url = f"{GRAPH_BASE}/{catalog_id}/products"
+    params = {"fields": "id,name,price,image_url,currency", "limit": 100}
+    
+    synced_count = 0
+    while url:
+        resp = requests.get(url, headers=_headers(token), params=params, timeout=15)
+        _raise_for_meta_error(resp)
+        data = resp.json()
+        
+        for item in data.get("data", []):
+            price_str = f"{item.get('price', '')} {item.get('currency', '')}".strip()
+            WhatsAppCatalogProduct.objects.update_or_create(
+                account=account,
+                catalog_id=catalog_id,
+                retailer_id=item.get("id"),
+                defaults={
+                    "name": item.get("name", "Unknown Product"),
+                    "price": price_str,
+                    "image_url": item.get("image_url", ""),
+                    "is_active": True,
+                }
+            )
+            synced_count += 1
+            
+        paging = data.get("paging", {})
+        url = paging.get("next")
+        params = None  # Next URL already includes paging params
+        
+    return {"synced": synced_count}
+
+# ─────────────────────────────────────────────
+# Blocked Users API
+# ─────────────────────────────────────────────
+
+def block_users(phone_numbers: list, account=None) -> dict:
+    """
+    Block up to 1,000 WhatsApp users in one call.
+    Also updates local WhatsAppBlockedUser records.
+    Returns Meta's response dict with added_users / failed_users.
+    """
+    from .models import WhatsAppBlockedUser, WhatsAppContact
+    from django.utils import timezone
+    
+    token, phone_id = _get_credentials(account)
+    url = f"{GRAPH_BASE}/{phone_id}/block_users"
+    
+    payload = {
+        "messaging_product": "whatsapp",
+        "block_users": [{"user": str(p)} for p in phone_numbers]
+    }
+    
+    resp = requests.post(url, headers=_headers(token), json=payload, timeout=30)
+    data = resp.json()
+    _raise_for_meta_error(resp)
+    
+    block_users_res = data.get("block_users", {})
+    added = block_users_res.get("added_users", [])
+    failed = block_users_res.get("failed_users", [])
+    
+    # Update local DB for successes
+    for u in added:
+        phone = u.get("input", "")
+        wa_id = u.get("wa_id", "")
+        WhatsAppBlockedUser.objects.update_or_create(
+            account=account,
+            phone_number=phone,
+            defaults={
+                "wa_id": wa_id,
+                "is_active": True,
+                "meta_error": "",
+                "unblocked_at": None,
+                "unblocked_by": ""
+            }
+        )
+        WhatsAppContact.objects.filter(phone=phone).update(is_blocked=True)
+        
+    # Update local DB for failures (log error but don't mark active)
+    for u in failed:
+        phone = u.get("input", "")
+        wa_id = u.get("wa_id", "")
+        errors = u.get("errors", [])
+        error_str = str(errors) if errors else "Unknown failure"
+        WhatsAppBlockedUser.objects.update_or_create(
+            account=account,
+            phone_number=phone,
+            defaults={
+                "wa_id": wa_id,
+                "is_active": False,
+                "meta_error": error_str
+            }
+        )
+        
+    return data
+
+def unblock_users(phone_numbers: list, account=None) -> dict:
+    """
+    Unblock WhatsApp users.
+    Also marks local WhatsAppBlockedUser.is_active = False.
+    """
+    from .models import WhatsAppBlockedUser, WhatsAppContact
+    from django.utils import timezone
+    
+    token, phone_id = _get_credentials(account)
+    url = f"{GRAPH_BASE}/{phone_id}/block_users"
+    
+    payload = {
+        "messaging_product": "whatsapp",
+        "block_users": [{"user": str(p)} for p in phone_numbers]
+    }
+    
+    resp = requests.delete(url, headers=_headers(token), json=payload, timeout=30)
+    data = resp.json()
+    _raise_for_meta_error(resp)
+    
+    block_users_res = data.get("block_users", {})
+    removed = block_users_res.get("removed_users", [])
+    
+    for u in removed:
+        phone = u.get("input", "")
+        WhatsAppBlockedUser.objects.filter(account=account, phone_number=phone).update(
+            is_active=False,
+            unblocked_at=timezone.now()
+        )
+        WhatsAppContact.objects.filter(phone=phone).update(is_blocked=False)
+        
+    return data
+
+def get_blocked_users(limit=100, after_cursor=None, account=None) -> dict:
+    """
+    Fetch blocked users from Meta with pagination.
+    Returns raw Meta response with data[] and paging cursors.
+    """
+    token, phone_id = _get_credentials(account)
+    url = f"{GRAPH_BASE}/{phone_id}/block_users?limit={limit}"
+    if after_cursor:
+        url += f"&after={after_cursor}"
+        
+    resp = requests.get(url, headers=_headers(token), timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+
+def sync_blocked_users_from_meta(account=None) -> int:
+    """
+    Full sync — paginates through all blocked users on Meta
+    and updates local WhatsAppBlockedUser table.
+    Returns count of synced records.
+    """
+    from .models import WhatsAppBlockedUser, WhatsAppContact
+    
+    synced = 0
+    after_cursor = None
+    
+    # First, optionally mark all existing local blocks as inactive 
+    # to catch users that were unblocked outside the app, but since Meta's 
+    # API only returns wa_ids (not phone numbers), it's tricky to map.
+    # We will just insert/update the ones Meta returns.
+    
+    while True:
+        data = get_blocked_users(limit=100, after_cursor=after_cursor, account=account)
+        users = data.get("data", [])
+        
+        for u in users:
+            wa_id = str(u.get("wa_id", ""))
+            # Create a blocked record. We use wa_id as phone if we don't have it, 
+            # as Meta's GET doesn't return the original phone number in all cases
+            # (though wa_id is usually the number without the + sign).
+            phone_number = f"+{wa_id}" if not wa_id.startswith("+") else wa_id
+            
+            WhatsAppBlockedUser.objects.update_or_create(
+                account=account,
+                phone_number=phone_number,
+                defaults={
+                    "wa_id": wa_id,
+                    "is_active": True,
+                    "meta_error": ""
+                }
+            )
+            WhatsAppContact.objects.filter(phone=phone_number).update(is_blocked=True)
+            synced += 1
+            
+        paging = data.get("paging", {})
+        cursors = paging.get("cursors", {})
+        after_cursor = cursors.get("after")
+        if not after_cursor:
+            break
+            
+    return synced
+
+def send_single_product_message(phone_number: str, catalog_id: str, retailer_id: str, body: str, footer: str = "", account=None) -> dict:
+    """Send a single-product message."""
+    token, phone_id = _get_credentials(account)
+    to = _normalize_phone(phone_number)
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to,
+        "type": "interactive",
+        "interactive": {
+            "type": "product",
+            "body": {"text": body},
+            "action": {
+                "catalog_id": catalog_id,
+                "product_retailer_id": retailer_id
+            }
+        }
+    }
+    if footer:
+        payload["interactive"]["footer"] = {"text": footer}
+        
+    url = f"{GRAPH_BASE}/{phone_id}/messages"
+    resp = requests.post(url, headers=_headers(token), json=payload, timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+
+def send_multi_product_message(phone_number: str, catalog_id: str, sections: list, header: str, body: str, footer: str = "", account=None) -> dict:
+    """Send a multi-product message with sections."""
+    token, phone_id = _get_credentials(account)
+    to = _normalize_phone(phone_number)
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to,
+        "type": "interactive",
+        "interactive": {
+            "type": "product_list",
+            "header": {
+                "type": "text",
+                "text": header
+            },
+            "body": {"text": body},
+            "action": {
+                "catalog_id": catalog_id,
+                "sections": sections
+            }
+        }
+    }
+    if footer:
+        payload["interactive"]["footer"] = {"text": footer}
+        
+    url = f"{GRAPH_BASE}/{phone_id}/messages"
+    resp = requests.post(url, headers=_headers(token), json=payload, timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+
+def send_catalog_message(phone_number: str, thumbnail_retailer_id: str, body: str, footer: str = "", account=None) -> dict:
+    """Send a catalog message showing the full catalog."""
+    token, phone_id = _get_credentials(account)
+    to = _normalize_phone(phone_number)
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to,
+        "type": "interactive",
+        "interactive": {
+            "type": "catalog_message",
+            "body": {"text": body},
+            "action": {
+                "name": "catalog_message",
+                "parameters": {
+                    "thumbnail_product_retailer_id": thumbnail_retailer_id
+                }
+            }
+        }
+    }
+    if footer:
+        payload["interactive"]["footer"] = {"text": footer}
+        
+    url = f"{GRAPH_BASE}/{phone_id}/messages"
+    resp = requests.post(url, headers=_headers(token), json=payload, timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+
+def send_product_carousel_message(phone_number: str, catalog_id: str, retailer_ids: list, body: str, account=None) -> dict:
+    """Send a horizontally scrollable product carousel."""
+    token, phone_id = _get_credentials(account)
+    to = _normalize_phone(phone_number)
+    items = [{"product_retailer_id": r_id} for r_id in retailer_ids]
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to,
+        "type": "interactive",
+        "interactive": {
+            "type": "product_carousel",
+            "body": {"text": body},
+            "action": {
+                "catalog_id": catalog_id,
+                "sections": items
+            }
+        }
+    }
+    url = f"{GRAPH_BASE}/{phone_id}/messages"
+    resp = requests.post(url, headers=_headers(token), json=payload, timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+
+def send_catalog_link_message(phone_number: str, wa_number: str, account=None) -> dict:
+    """Send a simple text message containing the wa.me catalog link."""
+    body = f"Browse our full catalog here: https://wa.me/c/{wa_number}"
+    return send_text_message(phone_number, text=body, account=account)
+
+# ─────────────────────────────────────────────
+# In-App Signups (v22.0+)
+# ─────────────────────────────────────────────
+
+def create_signup(
+    display_name: str,
+    signup_message: str,
+    confirmation_message: str,
+    privacy_policy_url: str,
+    website_url: str = "",
+    promo_code: str = "",
+    account=None
+) -> dict:
+    """Create a new In-App Signup link for the WABA."""
+    token, _ = _get_credentials(account)
+    if not account or not account.waba_id:
+        raise ValueError("A configured WhatsAppAccount with a waba_id is required for Signups.")
+
+    url = f"{GRAPH_BASE}/{account.waba_id}/signups"
+    payload = {
+        "display_name": display_name,
+        "signup_message": signup_message,
+        "confirmation_message": confirmation_message,
+        "privacy_policy_url": privacy_policy_url,
+    }
+    if website_url:
+        payload["website_url"] = website_url
+    if promo_code:
+        payload["promo_code"] = promo_code
+
+    resp = requests.post(url, headers=_headers(token), json=payload, timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+
+def list_signups(account=None) -> list:
+    """List all In-App Signup links for the WABA."""
+    token, _ = _get_credentials(account)
+    if not account or not account.waba_id:
+        raise ValueError("A configured WhatsAppAccount with a waba_id is required for Signups.")
+
+    url = f"{GRAPH_BASE}/{account.waba_id}/signups"
+    resp = requests.get(url, headers=_headers(token), timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json().get("data", [])
+
+def get_signup(signup_id: str, account=None) -> dict:
+    """Get details of a specific In-App Signup link."""
+    token, _ = _get_credentials(account)
+    url = f"{GRAPH_BASE}/{signup_id}"
+    resp = requests.get(url, headers=_headers(token), timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+
+def update_signup(
+    signup_id: str,
+    promo_code: str = None,
+    confirmation_message: str = None,
+    account=None
+) -> dict:
+    """Update a signup link (only promo_code and confirmation_message are mutable)."""
+    token, _ = _get_credentials(account)
+    url = f"{GRAPH_BASE}/{signup_id}"
+    payload = {}
+    if promo_code is not None:
+        payload["promo_code"] = promo_code
+    if confirmation_message is not None:
+        payload["confirmation_message"] = confirmation_message
+
+    resp = requests.post(url, headers=_headers(token), json=payload, timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+
+def disable_signup(signup_id: str, account=None) -> dict:
+    """Disable a signup link."""
+    token, _ = _get_credentials(account)
+    url = f"{GRAPH_BASE}/{signup_id}"
+    resp = requests.post(url, headers=_headers(token), json={"status": "DISABLED"}, timeout=15)
+    _raise_for_meta_error(resp)
+    return resp.json()
+

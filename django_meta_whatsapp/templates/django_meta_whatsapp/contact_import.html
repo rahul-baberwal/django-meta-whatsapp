@@ -6,9 +6,14 @@
   <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
     <h2 class="text-sm font-semibold text-gray-900 mb-4">Upload CSV File</h2>
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-sm text-blue-700">
-      <p class="font-medium mb-1">Expected CSV columns:</p>
-      <code class="text-xs">phone, name, email, tags</code>
-      <p class="text-xs mt-1 text-blue-600">Only <code>phone</code> is required. Tags should be comma-separated within the cell.</p>
+      <div class="flex items-center justify-between">
+        <p class="font-medium mb-1">Expected CSV columns:</p>
+        <a href="?sample=1" class="text-blue-600 hover:text-blue-800 underline text-xs font-medium inline-flex items-center gap-1">
+          <i data-lucide="download" class="w-3 h-3"></i> Sample CSV
+        </a>
+      </div>
+      <code class="text-xs">phone, name, email, labels</code>
+      <p class="text-xs mt-1 text-blue-600">Only <code>phone</code> is required. Labels should be comma-separated within the cell. Existing labels are preserved and new ones appended.</p>
     </div>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}

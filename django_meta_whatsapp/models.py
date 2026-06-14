@@ -17,6 +17,9 @@ class WhatsAppAccount(models.Model):
     phone_number_id = models.CharField(max_length=100)
     waba_id = models.CharField(max_length=100, blank=True)
     verify_token = models.CharField(max_length=255, default=uuid.uuid4, help_text="Webhook verify token")
+    profile_name = models.CharField(max_length=255, blank=True, help_text="Fetched via Graph API")
+    profile_picture_url = models.URLField(max_length=1024, blank=True, help_text="Fetched via Graph API")
+    default_catalog_id = models.CharField(max_length=255, blank=True, help_text="Default Meta Commerce Catalog ID")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -29,6 +32,81 @@ class WhatsAppAccount(models.Model):
 
 
 # ─────────────────────────────────────────────
+# In-App Signups
+# ─────────────────────────────────────────────
+
+class WhatsAppSignup(models.Model):
+    """
+    Represents an In-App Signup deep link.
+    One signup = one shareable wa.me/PHONE/signup/ID link.
+    """
+    STATUS_CHOICES = [("ACTIVE", "Active"), ("DISABLED", "Disabled")]
+
+    account = models.ForeignKey(
+        WhatsAppAccount, on_delete=models.CASCADE, related_name="signups"
+    )
+    signup_id = models.CharField(max_length=100, unique=True, blank=True,
+        help_text="ID returned by Meta after creation")
+
+    # Fields that go to Meta
+    display_name = models.CharField(max_length=255,
+        help_text="Internal label, not shown to users")
+    signup_message = models.TextField(
+        help_text="Pre-consent screen text shown to user in WhatsApp")
+    confirmation_message = models.TextField(
+        help_text="Sent to user after they subscribe. Use {{promo_code}} for promo.")
+    privacy_policy_url = models.URLField(
+        help_text="Immutable after creation on Meta")
+    website_url = models.URLField(blank=True)
+    promo_code = models.CharField(max_length=100, blank=True,
+        help_text="Alphanumeric only. Replaces {{promo_code}} in confirmation message.")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ACTIVE")
+
+    # Local enhancements
+    auto_add_to_label = models.ForeignKey(
+        "WhatsAppLabel", on_delete=models.SET_NULL, null=True, blank=True,
+        help_text="Automatically assign this label to users who subscribe via this link"
+    )
+
+    # Stats (updated from webhook)
+    subscriber_count = models.PositiveIntegerField(default=0)
+
+    tos_accepted = models.BooleanField(default=False,
+        help_text="True after Terms of Service accepted on first creation")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "In-App Signup"
+
+    def __str__(self):
+        return f"{self.display_name} [{self.status}]"
+
+    def get_deep_link(self, phone_number: str) -> str:
+        """Build the shareable wa.me deep link for a given phone number."""
+        clean = str(phone_number).lstrip("+").replace(" ", "")
+        return f"https://wa.me/{clean}/signup/{self.signup_id}"
+
+
+# ─────────────────────────────────────────────
+# Label
+# ─────────────────────────────────────────────
+
+class WhatsAppLabel(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    color = models.CharField(max_length=20, default="gray", help_text="Tailwind color or hex")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Label"
+        verbose_name_plural = "Labels"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+# ─────────────────────────────────────────────
 # Contact
 # ─────────────────────────────────────────────
 
@@ -36,9 +114,18 @@ class WhatsAppContact(models.Model):
     phone = models.CharField(max_length=30, unique=True)
     name = models.CharField(max_length=255, blank=True)
     email = models.EmailField(blank=True)
-    tags = models.JSONField(default=list, blank=True, help_text='e.g. ["vip", "lead"]')
+    labels = models.ManyToManyField(WhatsAppLabel, blank=True, related_name="contacts")
     notes = models.TextField(blank=True)
     opted_out = models.BooleanField(default=False, help_text="Contact has opted out of marketing")
+    is_blocked = models.BooleanField(default=False, help_text="Synced from WhatsAppBlockedUser — for fast inbox UI filtering")
+    
+    subscribed_via_signup = models.ForeignKey(
+        "WhatsAppSignup", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="subscribers",
+        help_text="Which signup link brought this contact in"
+    )
+    subscribed_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -65,13 +152,6 @@ class WhatsAppContact(models.Model):
 # ─────────────────────────────────────────────
 
 class WhatsAppConversation(models.Model):
-    LABEL_CHOICES = [
-        ("lead", "Lead"),
-        ("customer", "Customer"),
-        ("vip", "VIP"),
-        ("support", "Support"),
-        ("spam", "Spam"),
-    ]
 
     account = models.ForeignKey(
         WhatsAppAccount,
@@ -87,7 +167,7 @@ class WhatsAppConversation(models.Model):
     )
     # Fallback when contact record doesn't exist yet
     phone_number = models.CharField(max_length=30)
-    label = models.CharField(max_length=20, choices=LABEL_CHOICES, blank=True)
+    label = models.ForeignKey(WhatsAppLabel, on_delete=models.SET_NULL, null=True, blank=True, related_name="conversations")
     is_resolved = models.BooleanField(default=False)
     assigned_to = models.CharField(max_length=255, blank=True, help_text="Agent username or email")
     last_message_at = models.DateTimeField(null=True, blank=True)
@@ -391,3 +471,70 @@ class WhatsAppAPIKey(models.Model):
 
     def __str__(self):
         return f"{self.name} ({'active' if self.is_active else 'inactive'})"
+
+
+# ─────────────────────────────────────────────
+# Catalog Product
+# ─────────────────────────────────────────────
+
+class WhatsAppCatalogProduct(models.Model):
+    account = models.ForeignKey(
+        WhatsAppAccount,
+        on_delete=models.CASCADE,
+        related_name="catalog_products",
+        null=True, blank=True,
+    )
+    catalog_id = models.CharField(max_length=255)
+    retailer_id = models.CharField(max_length=255)
+    name = models.CharField(max_length=255)
+    price = models.CharField(max_length=100, blank=True)
+    image_url = models.URLField(blank=True)
+    is_active = models.BooleanField(default=True)
+    synced_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Catalog Product"
+        unique_together = ("account", "catalog_id", "retailer_id")
+
+    def __str__(self):
+        return f"{self.name} ({self.catalog_id})"
+
+# ─────────────────────────────────────────────
+# Blocked Users
+# ─────────────────────────────────────────────
+
+class WhatsAppBlockedUser(models.Model):
+    """
+    Local mirror of Meta's block list.
+    Source of truth is Meta — sync with GET /block_users.
+    """
+    account = models.ForeignKey(
+        WhatsAppAccount,
+        on_delete=models.CASCADE,
+        related_name="blocked_users",
+    )
+    phone_number = models.CharField(max_length=30)        # e.g. "+919876543210"
+    wa_id = models.CharField(max_length=50, blank=True)   # Meta's wa_id (may differ from phone)
+
+    blocked_at = models.DateTimeField(auto_now_add=True)
+    blocked_by = models.CharField(max_length=255, blank=True,
+        help_text="Username/email of agent who triggered the block")
+    reason = models.TextField(blank=True,
+        help_text="Internal note — spam, abuse, etc.")
+
+    # Sync state
+    is_active = models.BooleanField(default=True,
+        help_text="False means unblocked — kept for audit history")
+    unblocked_at = models.DateTimeField(null=True, blank=True)
+    unblocked_by = models.CharField(max_length=255, blank=True)
+    meta_error = models.TextField(blank=True,
+        help_text="Stores error detail if Meta block call failed")
+
+    class Meta:
+        unique_together = [("account", "phone_number")]
+        ordering = ["-blocked_at"]
+        verbose_name = "Blocked User"
+
+    def __str__(self):
+        status = "blocked" if self.is_active else "unblocked"
+        return f"{self.phone_number} [{status}]"

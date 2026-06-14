@@ -1,362 +1,99 @@
-# django-meta-whatsapp
+<div align="center">
+  <img src="https://raw.githubusercontent.com/rahul-baberwal/django-meta-whatsapp/main/docs/django-meta-whatsapp.png" width="100" height="100" alt="django-meta-whatsapp logo">
+  <h1>django-meta-whatsapp</h1>
+  <p><strong>A production-ready WhatsApp Cloud Platform engine for Django.</strong></p>
+  
+  [![PyPI](https://img.shields.io/pypi/v/django-meta-whatsapp?style=flat-square&color=22c55e)](https://pypi.org/project/django-meta-whatsapp/)
+  [![Latest on Django Packages](https://img.shields.io/badge/PyPI-django--meta--whatsapp-tags-8c3c26.svg?style=flat-square)](https://djangopackages.org/packages/p/django-meta-whatsapp/)
+  [![Python](https://img.shields.io/pypi/pyversions/django-meta-whatsapp?style=flat-square)](https://pypi.org/project/django-meta-whatsapp/)
+  [![Django](https://img.shields.io/badge/Django-3.2%20%7C%204.0%20%7C%205.0-092E20.svg?style=flat-square)](https://pypi.org/project/django-meta-whatsapp/)
+  [![License](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://github.com/rahul-baberwal/django-meta-whatsapp/blob/main/LICENSE)
+</div>
 
-A production-ready Django WhatsApp Cloud Platform you can drop into any Django project.
+<br/>
 
-## Features
-
-- **Inbox** — Real-time chat interface with media, location pins, reply threading, message status ticks
-- **Contacts** — CSV import/export, tagging, opt-out management
-- **Templates** — Create, edit, push to Meta, sync from Meta
-- **Campaigns** — Bulk messaging with pluggable audience system, CSV support, scheduled sends
-- **Analytics** — Delivery/read tracking, 30-day trend chart
-- **Webhooks** — Automatic inbound message sync, status updates, reaction handling
-- **REST APIs** — Send text, location, template; list chats/campaigns (API-key auth)
-- **Django Admin** — Full admin panel for all models
-- **Multi-account** — One Django project, multiple WhatsApp Business Accounts
-- **Signals** — Hook into message received/sent and campaign completed events
-- **Celery support** — Optional background campaign processing
+**`django-meta-whatsapp`** is not just an API wrapper—it's a fully-featured, drop-in CRM and messaging platform that lives entirely within your existing Django project. It provides a beautiful Tailwind UI for managing conversations, blasting marketing campaigns, handling webhooks, and syncing contacts without requiring third-party SaaS subscriptions.
 
 ---
 
-## Installation
+## ✨ Features
+
+- 📨 **Live Unified Inbox**: A sleek, real-time chat interface to talk to your customers directly from your Django admin dashboard.
+- 🚀 **Marketing Campaigns**: Schedule and send bulk messages using approved WhatsApp Templates. Track delivery, read rates, and bounce rates.
+- 👥 **Contact Management**: Import CSVs, assign dynamic colored **Labels**, and auto-sync users who subscribe via WhatsApp deep-links.
+- 🚫 **Blocked User Sync**: Automatically detect and sync users who block your business so you never waste API calls on blocked numbers.
+- 🧩 **Template Sync**: Pull all your approved WhatsApp message templates directly from Meta with one click.
+- 🔗 **In-App Signups**: Create and manage `wa.me` deep links so users can instantly opt-in to marketing messages.
+- ⚡ **Webhooks Engine**: Built-in webhook endpoints to automatically ingest incoming messages, delivery receipts, and status updates.
+
+## 📦 Installation
+
+This package is fully managed via `uv` or `pip`.
 
 ```bash
+# Using uv (Recommended)
+uv add django-meta-whatsapp
+
+# Using pip
 pip install django-meta-whatsapp
-# or from source:
-pip install -e .
 ```
 
-Also install `django-tailwind-cli` (no Node required):
-```bash
-pip install django-tailwind-cli
-```
+## ⚙️ Configuration
 
----
-
-## Quick Setup
-
-### 1. settings.py
+Add the app to your `INSTALLED_APPS` in `settings.py`:
 
 ```python
 INSTALLED_APPS = [
-    ...
-    "django_tailwind_cli",
+    # ...
     "django_meta_whatsapp",
 ]
-
-# Single-account shortcut (alternative: use WhatsAppAccount model in dashboard)
-WHATSAPP = {
-    "ACCESS_TOKEN": "your_meta_access_token",
-    "PHONE_NUMBER_ID": "your_phone_number_id",
-    "WABA_ID": "your_waba_id",            # needed for template sync
-    "VERIFY_TOKEN": "your_verify_token",  # for webhook verification
-    "LOGIN_URL": "/accounts/login/",      # redirect for unauthenticated users
-}
 ```
 
-### 2. urls.py
+Include the URLs in your `urls.py`:
 
 ```python
 from django.urls import path, include
 
-urlpatterns += [
-    path("whatsapp/", include("django_meta_whatsapp.urls")),
+urlpatterns = [
+    # ...
+    path("whatsapp/", include("django_meta_whatsapp.urls", namespace="django_meta_whatsapp")),
 ]
 ```
 
-### 3. Migrate
+Add your WhatsApp Cloud API credentials to `settings.py`:
+
+```python
+# Required
+WHATSAPP_API_TOKEN = "EAA..."
+WHATSAPP_PHONE_NUMBER_ID = "1234567890"
+WHATSAPP_WEBHOOK_VERIFY_TOKEN = "your_secure_random_string"
+
+# Optional Customizations
+WHATSAPP_DASHBOARD_NAME = "My Business CRM"
+WHATSAPP_DASHBOARD_LOGO = "https://yourwebsite.com/logo.png"
+```
+
+Run migrations:
 
 ```bash
 python manage.py migrate
 ```
 
-### 4. Tailwind CSS
+## 🚀 Quickstart
 
-```bash
-python manage.py tailwind build
-```
+1. Visit `/whatsapp/` in your browser.
+2. If you haven't set up your credentials in `settings.py`, the UI will prompt you to create a **WhatsApp Account** object via the dashboard.
+3. Configure your Meta App Webhook URL to point to `https://yourdomain.com/whatsapp/webhook/` using your `WHATSAPP_WEBHOOK_VERIFY_TOKEN`.
+4. Sync your templates from the **Templates** tab.
+5. Start chatting from the **Inbox**!
 
-Open `http://yoursite/whatsapp/` — done.
+## 📖 Full Documentation
 
----
-
-## Optional Dashboard Configuration
-
-You can customize the look and feel of the WhatsApp Dashboard directly from your `settings.py`. All of these settings are optional!
-
-```python
-# settings.py
-
-# Replace the text name in the sidebar (default: "WhatsApp")
-META_WHATSAPP_DASHBOARD_NAME = "My Custom App"
-
-# Change the Lucide icon used in the sidebar (default: "message-circle")
-META_WHATSAPP_DASHBOARD_ICON = "building-2"
-
-# Or, use a complete custom image logo instead of the icon
-META_WHATSAPP_DASHBOARD_LOGO = "/static/logo.png"
-
-# Change the primary accent color of the entire dashboard! (Provide an HSL triplet)
-META_WHATSAPP_ACCENT_COLOR = "142, 72%, 45%"   # Emerald green
-```
+For advanced setup, webhook handling, and UI customization, please see the full documentation at:
+**[https://rahul-baberwal.github.io/django-meta-whatsapp](https://rahul-baberwal.github.io/django-meta-whatsapp)**
 
 ---
 
-## Multi-Account Support
-
-Add accounts in the **Settings → Accounts** dashboard. Each account has its own:
-- Access Token
-- Phone Number ID
-- WABA ID
-- Verify Token
-
-The webhook endpoint (`/whatsapp/webhook/`) auto-routes to the correct account by `phone_number_id`.
-
----
-
-## Pluggable Audience System
-
-The package never assumes your user model. You control who receives campaigns.
-
-### Option 1: Named audience providers
-
-```python
-# myapp/whatsapp_audiences.py
-from myapp.models import Customer
-
-def vip_customers():
-    return Customer.objects.filter(total_orders__gt=10)
-
-def inactive_users():
-    return Customer.objects.filter(is_active=False)
-```
-
-```python
-# settings.py
-WHATSAPP = {
-    ...
-    "PHONE_FIELD": "mobile",      # field on your model that holds the phone number
-    "NAME_FIELD": "full_name",    # field for the display name
-    "AUDIENCES": {
-        "VIP Customers": "myapp.whatsapp_audiences.vip_customers",
-        "Inactive Users": "myapp.whatsapp_audiences.inactive_users",
-    },
-}
-```
-
-The campaign form will show these as audience choices.
-
-### Option 2: Full campaign resolver
-
-```python
-# settings.py
-WHATSAPP = {
-    ...
-    "CAMPAIGN_RESOLVER": "myapp.whatsapp_audiences.resolve_campaign",
-}
-```
-
-```python
-# myapp/whatsapp_audiences.py
-def resolve_campaign(campaign):
-    """
-    Return list of dicts: [{"phone": "919...", "name": "...", "params": {...}}, ...]
-    """
-    if campaign.audience_type == "vip":
-        qs = Customer.objects.filter(total_orders__gt=10)
-        return [{"phone": c.mobile, "name": c.full_name, "params": {}} for c in qs]
-    return []
-```
-
-### Option 3: Built-in WhatsAppContact list
-
-Set `audience_type = "contacts"` — sends to all non-opted-out `WhatsAppContact` records.
-
-### Option 4: CSV Upload
-
-Set `audience_type = "csv"` and upload a CSV with `phone`, `name` columns in the campaign form.
-
----
-
-## Sending Messages Programmatically
-
-```python
-from django_meta_whatsapp.utils import (
-    send_text_message,
-    send_location_message,
-    send_template_message,
-    send_media_message,
-    upload_media,
-    build_template_components,
-)
-
-# Text
-send_text_message("919876543210", "Hello from Django!")
-
-# Location pin
-send_location_message(
-    "919876543210",
-    latitude=24.5854,
-    longitude=73.7125,
-    name="Udaipur Office",
-    address="Hiran Magri, Udaipur, Rajasthan",
-)
-
-# Template with variables
-components = build_template_components(body_params=["Rakesh", "ORD-1234"])
-send_template_message("919876543210", "order_confirmation", components=components)
-
-# Media
-with open("invoice.pdf", "rb") as f:
-    media_id = upload_media(f, "application/pdf")
-send_media_message("919876543210", media_id, "document", filename="invoice.pdf")
-```
-
----
-
-## Signals
-
-```python
-from django.dispatch import receiver
-from django_meta_whatsapp.signals import (
-    whatsapp_message_received,
-    whatsapp_message_sent,
-    whatsapp_campaign_completed,
-)
-
-@receiver(whatsapp_message_received)
-def on_inbound(sender, message, **kwargs):
-    print(f"New message from {message.phone_number}: {message.message_body}")
-
-@receiver(whatsapp_campaign_completed)
-def on_campaign_done(sender, campaign, sent, failed, **kwargs):
-    print(f"Campaign '{campaign.name}' finished: {sent} sent, {failed} failed")
-```
-
----
-
-## Celery (optional)
-
-```python
-# settings.py
-WHATSAPP_USE_CELERY = True
-```
-
-Campaigns will be queued as Celery tasks instead of running synchronously.
-
----
-
-## REST API
-
-All endpoints require `X-API-Key` header (create keys in **Settings → API Keys**).
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/whatsapp/api/send-message/` | Send text message |
-| POST | `/whatsapp/api/send-location/` | Send location pin |
-| POST | `/whatsapp/api/send-template/` | Send approved template |
-| GET  | `/whatsapp/api/chats/` | List recent conversations |
-| GET  | `/whatsapp/api/campaigns/` | List campaigns |
-
-### Send text
-```http
-POST /whatsapp/api/send-message/
-X-API-Key: your-key
-Content-Type: application/json
-
-{"phone": "919876543210", "message": "Hello!"}
-```
-
-### Send location
-```http
-POST /whatsapp/api/send-location/
-X-API-Key: your-key
-Content-Type: application/json
-
-{
-  "phone": "919876543210",
-  "latitude": 24.5854,
-  "longitude": 73.7125,
-  "name": "Our Store",
-  "address": "Udaipur, Rajasthan"
-}
-```
-
-### Send template
-```http
-POST /whatsapp/api/send-template/
-X-API-Key: your-key
-Content-Type: application/json
-
-{
-  "phone": "919876543210",
-  "template_name": "order_confirmation",
-  "language": "en",
-  "body_params": ["Rakesh", "ORD-1234"]
-}
-```
-
----
-
-## Webhook Configuration
-
-Set your Meta webhook URL to:
-```
-https://yourdomain.com/whatsapp/webhook/
-```
-
-The verify token is either:
-1. The `verify_token` field on a `WhatsAppAccount` (multi-account)
-2. `WHATSAPP["VERIFY_TOKEN"]` in settings (single-account)
-
----
-
-## Management Commands
-
-```bash
-# Sync templates from Meta
-python manage.py wa_sync_templates
-
-# Sync for a specific account
-python manage.py wa_sync_templates --account-id 1
-```
-
----
-
-## Models Reference
-
-| Model | Purpose |
-|-------|---------|
-| `WhatsAppAccount` | Multi-account credentials |
-| `WhatsAppContact` | Contact directory |
-| `WhatsAppConversation` | Grouped chat threads |
-| `WhatsAppMessage` | Individual messages (text, media, location, etc.) |
-| `WhatsAppTemplate` | Meta-approved message templates |
-| `WhatsAppCampaign` | Bulk send campaigns |
-| `WhatsAppCampaignRecipient` | Per-recipient status tracking |
-| `WhatsAppMedia` | Uploaded media library |
-| `WhatsAppWebhookLog` | Raw webhook event logs |
-| `WhatsAppAPIKey` | REST API authentication keys |
-
----
-
-## Environment Variables (alternative to settings.py)
-
-```env
-META_WA_ACCESS_TOKEN=EAAx...
-META_WA_PHONE_NUMBER_ID=1234567890
-META_WABA_ID=9876543210
-META_WA_VERIFY_TOKEN=my_secret_verify_token
-```
-
----
-
-## License
-
-MIT
-
-
-## Developer
-Created by [Rahul Baberwal](https://rahulbaberwal.com).
-
-**Repository:** [https://github.com/rahul-baberwal/django-meta-whatsapp/](https://github.com/rahul-baberwal/django-meta-whatsapp/)
+<div align="center">
+  Crafted with ❤️ by <a href="https://rahulbaberwal.com">Rahul Baberwal</a>
+</div>

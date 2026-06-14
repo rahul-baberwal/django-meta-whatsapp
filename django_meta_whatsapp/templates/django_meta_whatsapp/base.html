@@ -9,7 +9,7 @@
   {% if logo_url %}
   <link rel="icon" href="{{ logo_url }}" />
   {% else %}
-  <link id="dynamic-favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>" />
+  <link id="dynamic-favicon" rel="icon" href="{% static 'django_meta_whatsapp/logo.png' %}" />
   {% endif %}
   {% load static wa_tags %}
   <script src="https://cdn.tailwindcss.com"></script>
@@ -19,6 +19,14 @@
     .sidebar-link{display:flex;align-items:center;gap:.75rem;padding:.5rem .75rem;border-radius:.5rem;font-size:.875rem;font-weight:500;color:#d1d5db;transition:all .15s}
     .sidebar-link:hover{background:rgba(255,255,255,.1);color:#fff}
     .sidebar-link.active{background:#059669;color:#fff}
+    
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -46,27 +54,37 @@
       {% if logo_url %}
       <img src="{{ logo_url }}" alt="Logo" class="w-9 h-9 object-contain rounded-lg">
       {% else %}
-      <div class="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center">
-        <i data-lucide="{% wa_dashboard_icon %}" class="w-5 h-5 text-white"></i>
-      </div>
+      <img src="{% static 'django_meta_whatsapp/logo.png' %}" alt="Logo" class="w-9 h-9 object-contain rounded-lg shrink-0">
       {% endif %}
       <div>
         <p class="text-white font-bold text-sm leading-none">{% wa_dashboard_name %}</p>
         <p class="text-gray-400 text-xs mt-0.5">django-meta-whatsapp</p>
       </div>
     </div>
-    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+    <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-hide">
       <a href="{% url 'django_meta_whatsapp:dashboard' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
         <i data-lucide="layout-dashboard" class="w-4 h-4 flex-shrink-0"></i> Dashboard
       </a>
       <a href="{% url 'django_meta_whatsapp:inbox' %}" class="sidebar-link {% if 'inbox' in request.resolver_match.url_name or 'chat_room' in request.resolver_match.url_name %}active{% endif %}">
         <i data-lucide="inbox" class="w-4 h-4 flex-shrink-0"></i> Inbox
       </a>
-      <a href="{% url 'django_meta_whatsapp:contact_list' %}" class="sidebar-link {% if 'contact' in request.resolver_match.url_name %}active{% endif %}">
-        <i data-lucide="users" class="w-4 h-4 flex-shrink-0"></i> Contacts
+      <a href="{% url 'django_meta_whatsapp:contact_list' %}" class="sidebar-link {% if request.resolver_match.url_name == 'contact_list' or request.resolver_match.url_name == 'contact_create' or request.resolver_match.url_name == 'contact_update' %}active{% endif %}">
+        <i data-lucide="users" class="w-4 h-4"></i> Contacts
+      </a>
+      <a href="{% url 'django_meta_whatsapp:label_list' %}" class="sidebar-link {% if 'label' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="tag" class="w-4 h-4"></i> Labels
+      </a>
+      <a href="{% url 'django_meta_whatsapp:signup_list' %}" class="sidebar-link {% if 'signup' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="link" class="w-4 h-4 flex-shrink-0"></i> Opt-in Links
+      </a>
+      <a href="{% url 'django_meta_whatsapp:blocked_list' %}" class="sidebar-link {% if 'blocked' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="user-minus" class="w-4 h-4 flex-shrink-0"></i> Blocked Users
       </a>
       <a href="{% url 'django_meta_whatsapp:template_list' %}" class="sidebar-link {% if 'template' in request.resolver_match.url_name %}active{% endif %}">
         <i data-lucide="file-text" class="w-4 h-4 flex-shrink-0"></i> Templates
+      </a>
+      <a href="{% url 'django_meta_whatsapp:catalog_list' %}" class="sidebar-link {% if 'catalog' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="shopping-bag" class="w-4 h-4 flex-shrink-0"></i> Catalog
       </a>
       <a href="{% url 'django_meta_whatsapp:campaign_list' %}" class="sidebar-link {% if 'campaign' in request.resolver_match.url_name %}active{% endif %}">
         <i data-lucide="send" class="w-4 h-4 flex-shrink-0"></i> Campaigns
@@ -82,6 +100,9 @@
       </a>
       <a href="{% url 'django_meta_whatsapp:apikey_list' %}" class="sidebar-link {% if 'apikey' in request.resolver_match.url_name %}active{% endif %}">
         <i data-lucide="key" class="w-4 h-4 flex-shrink-0"></i> API Keys
+      </a>
+      <a href="{% static 'django_meta_whatsapp/docs/index.html' %}" target="_blank" class="sidebar-link mt-4 !text-emerald-400 hover:!text-emerald-300">
+        <i data-lucide="book-open" class="w-4 h-4 flex-shrink-0"></i> Documentation
       </a>
     </nav>
     <div class="px-3 py-4 border-t border-white/10">

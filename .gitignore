@@ -38,7 +38,7 @@ env/
 # Project custom generated temp files
 .gemini/
 .system_generated/
-{django_meta_whatsapp/
+django_meta_whatsapp/
 whatsapp_campaign_csv/
 whatsapp_media/
 node_modules/

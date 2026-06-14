@@ -17,18 +17,40 @@
   <form method="get" class="flex gap-3">
     <div class="relative flex-1 max-w-sm">
       <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"></i>
-      <input name="q" value="{{ search_q }}" placeholder="Search contacts…" class="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+      <input name="q" value="{{ request.GET.q|default:'' }}" placeholder="Search contacts…" class="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
     </div>
-    <button type="submit" class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg">Search</button>
+    <select name="label" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white max-w-xs">
+      <option value="">All Labels</option>
+      {% for lbl in all_labels %}
+      <option value="{{ lbl.name }}" {% if request.GET.label == lbl.name %}selected{% endif %}>{{ lbl.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg">Filter</button>
   </form>
+  
+  <form id="bulkForm" method="post">
+    {% csrf_token %}
+    <div class="flex justify-between items-center mb-2">
+      <div class="space-x-2">
+        <button type="submit" formaction="{% url 'django_meta_whatsapp:bulk_block' %}" onclick="return confirm('Block selected users?');" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-red-700 bg-red-100 hover:bg-red-200">
+          Block Selected
+        </button>
+        <button type="submit" formaction="{% url 'django_meta_whatsapp:bulk_unblock' %}" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-emerald-700 bg-emerald-100 hover:bg-emerald-200">
+          Unblock Selected
+        </button>
+      </div>
+    </div>
   <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
     <table class="w-full">
       <thead class="bg-gray-50 border-b border-gray-100">
         <tr>
+          <th class="px-4 py-3 text-left w-10">
+             <input type="checkbox" onchange="document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = this.checked)">
+          </th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Phone</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tags</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Labels</th>
           <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
           <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
         </tr>
@@ -36,6 +58,9 @@
       <tbody class="divide-y divide-gray-50">
         {% for contact in contacts %}
         <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3">
+             <input type="checkbox" name="phones" value="{{ contact.phone }}" class="contact-checkbox">
+          </td>
           <td class="px-4 py-3">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-sm font-bold">{{ contact.name|default:contact.phone|first|upper }}</div>
@@ -45,11 +70,28 @@
           <td class="px-4 py-3 text-sm text-gray-600 font-mono">{{ contact.phone }}</td>
           <td class="px-4 py-3 text-sm text-gray-500">{{ contact.email|default:"—" }}</td>
           <td class="px-4 py-3">
-            {% for tag in contact.tags %}<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 mr-1">{{ tag }}</span>{% endfor %}
-          </td>
+          <div class="flex flex-wrap gap-1">
+            {% for lbl in contact.labels.all %}
+              {% if "#" in lbl.color %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border" style="background-color: {{ lbl.color }}20; color: {{ lbl.color }}; border-color: {{ lbl.color }}40;">
+                  {{ lbl.name }}
+                </span>
+              {% else %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-{{ lbl.color|default:'emerald' }}-100 text-{{ lbl.color|default:'emerald' }}-800">
+                  {{ lbl.name }}
+                </span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </td>
           <td class="px-4 py-3">
-            {% if contact.opted_out %}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Opted out</span>
-            {% else %}<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">Active</span>{% endif %}
+            {% if contact.is_blocked %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Blocked</span>
+            {% elif contact.opted_out %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Opted out</span>
+            {% else %}
+              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Active</span>
+            {% endif %}
           </td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end gap-2">
@@ -60,7 +102,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="px-4 py-12 text-center text-sm text-gray-400">No contacts found</td></tr>
+        <tr><td colspan="7" class="px-4 py-12 text-center text-sm text-gray-400">No contacts found</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -74,5 +116,6 @@
     </div>
     {% endif %}
   </div>
+  </form>
 </div>
 {% endblock %}

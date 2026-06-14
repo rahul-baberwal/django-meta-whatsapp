@@ -4,6 +4,34 @@
 {% block page_title %}{% if object %}Edit Campaign{% else %}New Campaign{% endif %}{% endblock %}
 
 {% block content %}
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+<style>
+.ts-control {
+  border-radius: 0.75rem !important;
+  padding: 0.625rem 1rem !important;
+  border-color: #e5e7eb !important;
+  background-color: rgba(249, 250, 251, 0.5) !important;
+  font-size: 0.875rem !important;
+  box-shadow: none !important;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+}
+.ts-control.focus {
+  border-color: #10b981 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+.ts-dropdown {
+  border-radius: 0.75rem !important;
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb !important;
+  margin-top: 4px;
+}
+</style>
+{% endblock %}
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
   <!-- Form Section -->
   <div class="lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm p-6 lg:p-8">
@@ -179,7 +207,26 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+  new TomSelect('#id_template', {
+    create: false,
+    sortField: {
+      field: "text",
+      direction: "asc"
+    }
+  });
+
+  new TomSelect('#id_audience_type', {
+    create: false,
+    sortField: {
+      field: "text",
+      direction: "asc"
+    }
+  });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   // Existing data parsing
   let initialMappings = {};

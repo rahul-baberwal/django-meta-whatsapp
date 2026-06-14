@@ -3,6 +3,33 @@
 {% block page_title %}{{ contact.name|default:phone_number }}{% endblock %}
 {% block page_subtitle %}<p class="text-xs text-gray-400">{{ phone_number }}</p>{% endblock %}
 {% block topbar_actions %}
+{% if conversation %}
+<select id="conversationLabel" onchange="updateConvLabel(this.value)" class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 mr-2 text-gray-700 font-medium">
+  <option value="">No Label</option>
+  {% for lbl in all_labels %}
+  <option value="{{ lbl.name }}" {% if conversation.label.name == lbl.name %}selected{% endif %}>{{ lbl.name|title }}</option>
+  {% endfor %}
+  <option disabled>──────────</option>
+  <option value="--new--">+ Create New Label</option>
+</select>
+{% endif %}
+{% if contact %}
+  {% if contact.is_blocked %}
+  <form action="{% url 'django_meta_whatsapp:contact_unblock' phone_number %}" method="post" class="inline-block">
+    {% csrf_token %}
+    <button type="submit" class="inline-flex items-center justify-center h-9 px-3 rounded-lg border border-emerald-500 text-emerald-600 hover:bg-emerald-50 transition-colors text-sm font-medium mr-2" title="Unblock User">
+      <i data-lucide="unlock" class="w-4 h-4 mr-1"></i> Unblock
+    </button>
+  </form>
+  {% else %}
+  <form action="{% url 'django_meta_whatsapp:contact_block' phone_number %}" method="post" class="inline-block" onsubmit="return confirm('Block this user?');">
+    {% csrf_token %}
+    <button type="submit" class="inline-flex items-center justify-center h-9 px-3 rounded-lg border border-red-500 text-red-600 hover:bg-red-50 transition-colors text-sm font-medium mr-2" title="Block User">
+      <i data-lucide="slash" class="w-4 h-4 mr-1"></i> Block
+    </button>
+  </form>
+  {% endif %}
+{% endif %}
 <button type="button" onclick="document.getElementById('helpModal').classList.remove('hidden')" class="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors" title="Formatting Help">
   <i data-lucide="help-circle" class="w-5 h-5"></i>
 </button>
@@ -399,6 +426,39 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+{% if conversation %}
+function updateConvLabel(val) {
+  let labelName = val;
+  if (val === '--new--') {
+    labelName = prompt("Enter new label name:");
+    if (!labelName) {
+      document.getElementById('conversationLabel').value = "{{ conversation.label.name|default:'' }}";
+      return;
+    }
+    // We add an option optimistically
+    const sel = document.getElementById('conversationLabel');
+    const opt = document.createElement('option');
+    opt.value = labelName;
+    opt.text = labelName;
+    sel.add(opt, sel.options[sel.options.length - 2]); // before separator
+    sel.value = labelName;
+  }
+  
+  const fd = new FormData();
+  fd.append("label", labelName);
+  fd.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+  
+  fetch("{% url 'django_meta_whatsapp:update_label' conversation.pk %}", {
+    method: "POST",
+    body: fd
+  }).then(r => r.json()).then(data => {
+    if(data.status !== 'ok') alert('Failed to update label');
+  }).catch(e => {
+    alert('Failed to update label');
+  });
+}
+{% endif %}
 </script>
 
 <!-- Help Modal -->
