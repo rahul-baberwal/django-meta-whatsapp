@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-meta-whatsapp"
-version = "1.0.2"
+version = "1.0.3"
 description = "Production-ready Django WhatsApp Cloud Platform — Inbox, Campaigns, Templates, Analytics"
 readme = "README.md"
 requires-python = ">=3.9"
