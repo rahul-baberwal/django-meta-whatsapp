@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rahul-baberwal.github.io/django-meta-whatsapp/sitemap.xml

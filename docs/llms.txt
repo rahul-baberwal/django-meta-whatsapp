@@ -1,0 +1,119 @@
+# django-meta-whatsapp
+
+django-meta-whatsapp is a production-ready WhatsApp Cloud Platform engine for Django. It features a drop-in WhatsApp CRM, live inbox, bulk campaigns, webhook engine, and REST APIs.
+
+## Installation
+```bash
+# Using uv
+uv add django-meta-whatsapp
+
+# Using pip
+pip install django-meta-whatsapp
+```
+
+## Configuration
+Add to `INSTALLED_APPS` in `settings.py`:
+```python
+INSTALLED_APPS = [
+    ...,
+    "django_meta_whatsapp",
+]
+```
+
+Mount URLs in `urls.py`:
+```python
+from django.urls import path, include
+
+urlpatterns = [
+    path("whatsapp/", include("django_meta_whatsapp.urls", namespace="django_meta_whatsapp")),
+]
+```
+
+Required settings in `settings.py`:
+```python
+WHATSAPP = {
+    "API_TOKEN": "EAA...",
+    "PHONE_NUMBER_ID": "1234567890",
+    "WEBHOOK_VERIFY_TOKEN": "your_secure_verify_token",
+}
+```
+
+## Python API Reference
+
+### Send Text Message
+```python
+from django_meta_whatsapp.utils import send_text_message
+
+response = send_text_message(
+    phone_number="919876543210", 
+    text="Hello from Django!", 
+    account=None # Optional WhatsAppAccount instance
+)
+```
+
+### Send Location Pin
+```python
+from django_meta_whatsapp.utils import send_location_message
+
+send_location_message(
+    phone_number="919876543210",
+    latitude=28.6139,
+    longitude=77.2090,
+    name="Our Store",
+    address="New Delhi, India"
+)
+```
+
+### Upload & Send Media
+```python
+from django_meta_whatsapp.utils import upload_media, send_media_message
+
+with open("invoice.pdf", "rb") as f:
+    media_id = upload_media(f, mime_type="application/pdf")
+
+send_media_message(
+    phone_number="919876543210",
+    media_id=media_id,
+    media_type="document",
+    filename="invoice.pdf",
+    caption="Here is your requested invoice."
+)
+```
+
+### Send Template Message
+```python
+from django_meta_whatsapp.utils import send_template_message, build_template_components
+
+components = build_template_components(
+    body_params=["Rahul", "Tomorrow 5 PM"]
+)
+
+send_template_message(
+    phone_number="919876543210",
+    template_name="appointment_reminder",
+    language_code="en",
+    components=components
+)
+```
+
+## Django Signals
+```python
+from django.dispatch import receiver
+from django_meta_whatsapp.signals import (
+    whatsapp_message_received,
+    whatsapp_message_sent,
+    whatsapp_campaign_completed,
+)
+
+@receiver(whatsapp_message_received)
+def on_inbound(sender, message, **kwargs):
+    # message is a WhatsAppMessage instance
+    print(f"Inbound from {message.phone_number}: {message.message_body}")
+```
+
+## REST API Endpoints
+All requests require the `X-API-Key` header.
+- **POST** `/whatsapp/api/send-message/` (JSON: `{"phone": "...", "message": "..."}`)
+- **POST** `/whatsapp/api/send-template/` (JSON: `{"phone": "...", "template_name": "...", "language": "...", "body_params": [...]}`)
+- **GET** `/whatsapp/api/chats/`
+- **GET** `/whatsapp/api/campaigns/`
