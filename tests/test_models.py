@@ -24,8 +24,7 @@ class WhatsAppModelTests(TestCase):
         self.contact = WhatsAppContact.objects.create(
             phone="+919876543210",
             name="John Doe",
-            email="john@example.com",
-            tags=["vip"]
+            email="john@example.com"
         )
 
     def test_whatsapp_account_creation(self):
@@ -43,11 +42,13 @@ class WhatsAppModelTests(TestCase):
         self.assertEqual(contact_no_name.display_name, "9112345678")
 
     def test_whatsapp_conversation_creation(self):
+        from django_meta_whatsapp.models import WhatsAppLabel
+        lbl = WhatsAppLabel.objects.create(name="lead")
         conversation = WhatsAppConversation.objects.create(
             account=self.account,
             contact=self.contact,
             phone_number=self.contact.phone,
-            label="lead"
+            label=lbl
         )
         self.assertEqual(str(conversation), f"Conversation with {self.contact.phone}")
         self.assertFalse(conversation.is_resolved)
@@ -126,4 +127,40 @@ class WhatsAppModelTests(TestCase):
         api_key = WhatsAppAPIKey.objects.create(name="Web App Key")
         self.assertEqual(str(api_key), "Web App Key (active)")
         self.assertEqual(len(str(api_key.key)), 36) # UUID string length
+
+    def test_whatsapp_account_access_token_encryption(self):
+        from django.db import connection
+        
+        raw_token = "meta_secret_access_token_xyz"
+        acc = WhatsAppAccount.objects.create(
+            name="Secure Biz",
+            access_token=raw_token,
+            phone_number_id="112233",
+            waba_id="445566"
+        )
+        
+        # 1. Test model layer transparency (decryption on retrieval)
+        acc.refresh_from_db()
+        self.assertEqual(acc.access_token, raw_token)
+        
+        # 2. Test database layer storage (confirm it is encrypted)
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT access_token FROM django_meta_whatsapp_whatsappaccount WHERE id = %s", [acc.id])
+            db_value = cursor.fetchone()[0]
+        
+        # Assert that the value in the database is not the plain text token
+        self.assertNotEqual(db_value, raw_token)
+        # Assert that it is indeed encrypted (Fernet tokens start with 'gAAAA')
+        self.assertTrue(db_value.startswith("gAAAA"))
+
+        # 3. Test fallback mechanism (plain text value stored directly in DB can be read)
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE django_meta_whatsapp_whatsappaccount SET access_token = %s WHERE id = %s",
+                ["legacy_plain_token", acc.id]
+            )
+        
+        acc.refresh_from_db()
+        self.assertEqual(acc.access_token, "legacy_plain_token")
+
 

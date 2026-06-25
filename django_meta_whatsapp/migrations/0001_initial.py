@@ -3,6 +3,7 @@
 import django.db.models.deletion
 import django.utils.timezone
 import uuid
+import django_meta_whatsapp.models
 from django.db import migrations, models
 
 
@@ -19,7 +20,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(help_text="Friendly label, e.g. 'My Business'", max_length=255)),
-                ('access_token', models.TextField(help_text='Meta permanent / system-user access token')),
+                ('access_token', django_meta_whatsapp.models.EncryptedTextField(help_text='Meta permanent / system-user access token')),
                 ('phone_number_id', models.CharField(max_length=100)),
                 ('waba_id', models.CharField(blank=True, max_length=100)),
                 ('verify_token', models.CharField(default=uuid.uuid4, help_text='Webhook verify token', max_length=255)),

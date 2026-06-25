@@ -35,8 +35,17 @@ WHATSAPP = {
     "API_TOKEN": "EAA...",
     "PHONE_NUMBER_ID": "1234567890",
     "WEBHOOK_VERIFY_TOKEN": "your_secure_verify_token",
+    
+    # Optional: Derived from settings.SECRET_KEY by default.
+    # Used to encrypt access tokens stored in the database.
+    "ENCRYPTION_KEY": "your_custom_encryption_key",
 }
 ```
+
+Database-stored access tokens (in `WhatsAppAccount` model) are encrypted automatically using symmetric encryption (`Fernet`).
+- **Default Key:** Derived from `settings.SECRET_KEY`.
+- **Backward Compatibility:** Plain text tokens stored previously are read cleanly using a fallback and get encrypted on next save.
+
 
 ## Python API Reference
 

@@ -120,7 +120,7 @@
           <a href="https://pypi.org/project/django-meta-whatsapp/" target="_blank">
             <img src="https://img.shields.io/pypi/v/django-meta-whatsapp.svg?color=22c55e&label=PyPI%20latest" alt="PyPI Version">
           </a>
-          <img src="https://img.shields.io/badge/version-1.0.4-22c55e.svg" alt="Current Version">
+          <img src="https://img.shields.io/badge/version-1.0.5-22c55e.svg" alt="Current Version">
           <a href="https://djangopackages.org/packages/p/django-meta-whatsapp/" target="_blank">
             <img src="https://img.shields.io/badge/Django%20Packages-django--meta--whatsapp-8c3c26.svg" alt="Latest on Django Packages">
           </a>
@@ -383,12 +383,20 @@ META_WHATSAPP_ACCENT_COLOR = "142, 72%, 45%"   # Emerald green</code></pre>
         <h2>Multi-Account Support</h2>
         <p>Add accounts in the <strong>Settings → Accounts</strong> dashboard. Each account has its own:</p>
         <ul>
-            <li>Access Token</li>
+            <li>Access Token (stored securely using symmetric encryption)</li>
             <li>Phone Number ID</li>
             <li>WABA ID</li>
             <li>Verify Token</li>
         </ul>
         <p>The webhook endpoint (<code>/whatsapp/webhook/</code>) auto-routes to the correct account by <code>phone_number_id</code>.</p>
+
+        <h3>Secure Credentials Storage</h3>
+        <p>To secure your Meta credentials, all <code>access_token</code> strings stored in the database are encrypted symmetrically at the application layer before being written to disk.</p>
+        <ul>
+            <li><strong>Encryption Key:</strong> By default, the encryption key is derived securely from your Django project's <code>SECRET_KEY</code>.</li>
+            <li><strong>Custom Encryption Key:</strong> You can explicitly specify an encryption key by setting <code>ENCRYPTION_KEY</code> inside the <code>WHATSAPP</code> dictionary in your <code>settings.py</code>.</li>
+            <li><strong>Backward Compatibility:</strong> Plain text access tokens from previous versions are seamlessly decrypted via fallback and will be encrypted the next time the account is saved.</li>
+        </ul>
       </section>
 
       <section id="audiences">

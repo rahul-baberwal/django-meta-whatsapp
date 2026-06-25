@@ -93,6 +93,10 @@ WHATSAPP = {
         "Subscribed via Link":  '{"subscribed_via_signup__isnull": false}',
         "New This Month":       '{"created_at__gte": "2024-06-01"}',
     },
+
+    # ── Security & Encryption (optional) ──────────────────
+    # Derived from SECRET_KEY by default. Used to symmetrically encrypt access tokens in DB.
+    "ENCRYPTION_KEY": "your_custom_secret_key_or_password",
 }
 ```
 
@@ -101,6 +105,12 @@ WHATSAPP = {
 ```bash
 python manage.py migrate
 ```
+
+**5. Credential Encryption (Secure-by-Default):**
+Database-stored access tokens (in the `WhatsAppAccount` model) are automatically encrypted using symmetric encryption (`Fernet`).
+- **Default Key:** The encryption key is derived automatically from your Django project's `SECRET_KEY`.
+- **Custom Key:** To use a separate key, define `"ENCRYPTION_KEY"` inside your `WHATSAPP` settings.
+- **Upgrades:** If you have existing plain text tokens, the database fallback will read them cleanly. Saving the account again will seamlessly encrypt it.
 
 ---
 
@@ -168,6 +178,11 @@ curl -X POST https://yourdomain.com/whatsapp/api/send-template/ \
 ---
 
 ## 📋 Changelog
+
+### v1.0.5
+- 🔒 **Database Credential Encryption** — Symmetrically encrypt `access_token` in database records (`WhatsAppAccount` model) using Fernet cryptography.
+- ⚙️ **Custom Encryption Key** — Dynamically derived from `SECRET_KEY` by default, customizable via `WHATSAPP['ENCRYPTION_KEY']`.
+- 🔄 **Plaintext Fallback** — Transparent migration with backward-compatibility for existing plaintext credentials.
 
 ### v1.0.4
 - ✅ Updated README with complete settings reference and REST API examples

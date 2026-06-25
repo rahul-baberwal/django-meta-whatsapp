@@ -4,6 +4,65 @@ import uuid
 
 
 # ─────────────────────────────────────────────
+# Encrypted Field Implementation
+# ─────────────────────────────────────────────
+
+class EncryptedTextField(models.TextField):
+    """
+    Symmetrically encrypts value before saving to database and decrypts it when retrieved.
+    Uses cryptography's Fernet encryption.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._fernet = None
+
+    @property
+    def fernet(self):
+        if self._fernet is None:
+            from django.conf import settings
+            from django.core.exceptions import ImproperlyConfigured
+            import base64
+            import hashlib
+            from cryptography.fernet import Fernet
+
+            wa_settings = getattr(settings, "WHATSAPP", {})
+            key_str = wa_settings.get("ENCRYPTION_KEY") or getattr(settings, "SECRET_KEY", "")
+            if not key_str:
+                raise ImproperlyConfigured(
+                    "Encryption key is required. Set settings.SECRET_KEY or WHATSAPP['ENCRYPTION_KEY']."
+                )
+            key_bytes = key_str.encode("utf-8")
+            hashed = hashlib.sha256(key_bytes).digest()
+            derived_key = base64.urlsafe_b64encode(hashed)
+            self._fernet = Fernet(derived_key)
+        return self._fernet
+
+    def get_prep_value(self, value):
+        value = super().get_prep_value(value)
+        if value is None:
+            return value
+        if not isinstance(value, str):
+            value = str(value)
+        encrypted_bytes = self.fernet.encrypt(value.encode("utf-8"))
+        return encrypted_bytes.decode("ascii")
+
+    def from_db_value(self, value, expression, connection):
+        if value is None:
+            return value
+        try:
+            decrypted_bytes = self.fernet.decrypt(value.encode("ascii"))
+            return decrypted_bytes.decode("utf-8")
+        except Exception:
+            # Fallback to returning raw value (useful if existing data is unencrypted)
+            return value
+
+    def to_python(self, value):
+        if value is None:
+            return value
+        return value
+
+
+# ─────────────────────────────────────────────
 # Account
 # ─────────────────────────────────────────────
 
@@ -13,7 +72,7 @@ class WhatsAppAccount(models.Model):
     (e.g. Business A, Business B each get their own account row).
     """
     name = models.CharField(max_length=255, help_text="Friendly label, e.g. 'My Business'")
-    access_token = models.TextField(help_text="Meta permanent / system-user access token")
+    access_token = EncryptedTextField(help_text="Meta permanent / system-user access token")
     phone_number_id = models.CharField(max_length=100)
     waba_id = models.CharField(max_length=100, blank=True)
     verify_token = models.CharField(max_length=255, default=uuid.uuid4, help_text="Webhook verify token")
