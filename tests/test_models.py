@@ -89,9 +89,15 @@ class WhatsAppModelTests(TestCase):
             name="welcome_template",
             language="en",
             body_text="Welcome {{1}}!",
-            status="APPROVED"
+            status="APPROVED",
+            buttons=None
         )
         self.assertEqual(str(template), "welcome_template (en) [APPROVED]")
+        self.assertEqual(template.buttons, [])
+
+        template.buttons = None
+        template.save()
+        self.assertEqual(template.buttons, [])
 
     def test_whatsapp_campaign_creation(self):
         template = WhatsAppTemplate.objects.create(

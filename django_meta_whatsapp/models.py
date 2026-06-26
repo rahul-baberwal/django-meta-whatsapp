@@ -377,6 +377,11 @@ class WhatsAppTemplate(models.Model):
     def __str__(self):
         return f"{self.name} ({self.language}) [{self.status}]"
 
+    def save(self, *args, **kwargs):
+        if self.buttons is None:
+            self.buttons = []
+        super().save(*args, **kwargs)
+
 
 # ─────────────────────────────────────────────
 # Campaign
