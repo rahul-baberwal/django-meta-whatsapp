@@ -1,0 +1,64 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Labels{% endblock %}
+{% block page_title %}Labels{% endblock %}
+{% block header_actions %}
+<a href="{% url 'django_meta_whatsapp:label_create' %}" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+  <i data-lucide="plus" class="w-4 h-4"></i> Add Label
+</a>
+{% endblock %}
+{% block content %}
+<div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+  <table class="w-full text-left text-sm text-gray-500">
+    <thead class="bg-gray-50 text-xs text-gray-700 uppercase">
+      <tr>
+        <th class="px-6 py-3">Name</th>
+        <th class="px-6 py-3">Color</th>
+        <th class="px-6 py-3 text-right">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for label in labels %}
+      <tr class="hover:bg-gray-50/50">
+        <td class="px-6 py-4 font-medium text-gray-900">
+          {% if "#" in label.color %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border" style="background-color: {{ label.color }}20; color: {{ label.color }}; border-color: {{ label.color }}40;">
+              {{ label.name }}
+            </span>
+          {% else %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-{{ label.color|default:'emerald' }}-100 text-{{ label.color|default:'emerald' }}-800">
+              {{ label.name }}
+            </span>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4">
+          {% if "#" in label.color %}
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 rounded-full" style="background-color: {{ label.color }}; border: 1px solid rgba(0,0,0,0.1);"></div>
+              {{ label.color }}
+            </div>
+          {% else %}
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 rounded-full bg-{{ label.color|default:'emerald' }}-500"></div>
+              <span class="capitalize">{{ label.color|default:'emerald' }}</span>
+            </div>
+          {% endif %}
+        </td>
+        <td class="px-6 py-4 text-right">
+          <a href="{% url 'django_meta_whatsapp:label_update' label.id %}" class="text-blue-600 hover:underline">Edit</a>
+          <a href="{% url 'django_meta_whatsapp:label_delete' label.id %}" class="text-red-600 hover:underline ml-3">Delete</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="3" class="px-6 py-8 text-center text-gray-500">
+          <div class="flex flex-col items-center">
+            <i data-lucide="tag" class="w-8 h-8 text-gray-300 mb-2"></i>
+            <p>No labels found. Create your first label to organize contacts and conversations.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

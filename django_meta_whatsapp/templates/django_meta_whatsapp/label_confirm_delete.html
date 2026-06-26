@@ -1,0 +1,21 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Delete Label{% endblock %}
+{% block page_title %}Delete Label{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6 text-center">
+    <div class="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+      <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+    </div>
+    <h2 class="text-lg font-bold text-gray-900 mb-2">Delete Label</h2>
+    <p class="text-gray-500 mb-6">Are you sure you want to delete the label <strong>"{{ object.name }}"</strong>? This label will be removed from all contacts and conversations.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="flex justify-center gap-3">
+        <a href="{% url 'django_meta_whatsapp:label_list' %}" class="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</a>
+        <button type="submit" class="px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700">Delete Label</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

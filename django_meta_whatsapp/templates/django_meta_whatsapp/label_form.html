@@ -1,0 +1,84 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}{% if object %}Edit{% else %}Add{% endif %} Label{% endblock %}
+{% block page_title %}{% if object %}Edit Label{% else %}Add Label{% endif %}{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden p-6">
+    <form method="post" class="space-y-6">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+        <input type="text" name="{{ form.name.name }}" value="{{ form.name.value|default:'' }}" required class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        {% if form.name.errors %}<p class="text-xs text-red-600 mt-1">{{ form.name.errors|join:", " }}</p>{% endif %}
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-3">Color Theme</label>
+        
+        <div class="space-y-4">
+          <!-- Preset Option -->
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input type="radio" name="{{ form.color_type.name }}" id="id_color_type_preset" value="preset" {% if form.color_type.value == "preset" %}checked{% endif %} class="h-4 w-4 text-emerald-600 border-gray-300 focus:ring-emerald-500">
+            </div>
+            <div class="ml-3 w-full">
+              <label for="id_color_type_preset" class="text-sm font-medium text-gray-900 cursor-pointer">Preset Color</label>
+              <div id="preset_container" class="mt-2 {% if form.color_type.value == 'custom' %}hidden{% endif %}">
+                {{ form.preset_color }}
+                {% if form.preset_color.errors %}<p class="text-xs text-red-600 mt-1">{{ form.preset_color.errors|join:", " }}</p>{% endif %}
+              </div>
+            </div>
+          </div>
+          
+          <!-- Custom Option -->
+          <div class="flex items-start">
+            <div class="flex items-center h-5">
+              <input type="radio" name="{{ form.color_type.name }}" id="id_color_type_custom" value="custom" {% if form.color_type.value == "custom" %}checked{% endif %} class="h-4 w-4 text-emerald-600 border-gray-300 focus:ring-emerald-500">
+            </div>
+            <div class="ml-3 w-full">
+              <label for="id_color_type_custom" class="text-sm font-medium text-gray-900 cursor-pointer">Custom Hex Code</label>
+              <div id="custom_container" class="mt-2 {% if form.color_type.value == 'preset' %}hidden{% endif %}">
+                <div class="flex items-center gap-3">
+                  {{ form.custom_color }}
+                  <span class="text-xs text-gray-500 w-full">Click to pick a color</span>
+                </div>
+                {% if form.custom_color.errors %}<p class="text-xs text-red-600 mt-1">{{ form.custom_color.errors|join:", " }}</p>{% endif %}
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+      
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+        <a href="{% url 'django_meta_whatsapp:label_list' %}" class="inline-flex items-center gap-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-5 py-2.5 rounded-lg">Cancel</a>
+        <button type="submit" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg">
+          <i data-lucide="save" class="w-4 h-4"></i> Save Label
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const presetRadio = document.getElementById('id_color_type_preset');
+    const customRadio = document.getElementById('id_color_type_custom');
+    const presetContainer = document.getElementById('preset_container');
+    const customContainer = document.getElementById('custom_container');
+    
+    function updateVisibility() {
+      if (presetRadio.checked) {
+        presetContainer.classList.remove('hidden');
+        customContainer.classList.add('hidden');
+      } else {
+        presetContainer.classList.add('hidden');
+        customContainer.classList.remove('hidden');
+      }
+    }
+    
+    presetRadio.addEventListener('change', updateVisibility);
+    customRadio.addEventListener('change', updateVisibility);
+  });
+</script>
+{% endblock %}

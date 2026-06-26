@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>django-meta-whatsapp | Documentation</title>
+  <link rel="icon" type="image/png" href="django-meta-whatsapp.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            brand: { 400: '#34d399', 500: '#10b981', 600: '#059669' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #020617; color: #cbd5e1; }
+    h1, h2, h3 { color: #f8fafc; font-weight: 600; }
+    h1 { font-size: 2.25rem; margin-bottom: 1rem; letter-spacing: -0.025em; }
+    h2 { font-size: 1.5rem; margin-top: 3rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; scroll-margin-top: 2rem; }
+    h3 { font-size: 1.125rem; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #e2e8f0; }
+    p { line-height: 1.7; margin-bottom: 1.25rem; }
+    ul { list-style-type: none; padding-left: 0; margin-bottom: 1.5rem; }
+    ul li { position: relative; padding-left: 1.5rem; margin-bottom: 0.5rem; color: #94a3b8; }
+    ul li::before { content: "•"; position: absolute; left: 0; color: #34d399; font-weight: bold; }
+    strong { color: #f8fafc; }
+    a { color: #34d399; text-decoration: none; transition: color 0.2s; }
+    a:hover { color: #10b981; }
+    
+    pre { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1.25rem; overflow-x: auto; font-family: ui-monospace, monospace; font-size: 0.875rem; margin-bottom: 1.5rem; color: #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    code { background: rgba(255,255,255,0.1); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-family: ui-monospace, monospace; font-size: 0.875em; color: #34d399; }
+    pre code { background: transparent; padding: 0; color: inherit; }
+    
+    .sidebar-link { display: block; padding: 0.4rem 0.75rem; color: #94a3b8; font-size: 0.875rem; border-radius: 0.5rem; transition: all 0.2s; margin-bottom: 0.25rem; }
+    .sidebar-link:hover { color: #f8fafc; background: rgba(255,255,255,0.05); }
+    .sidebar-link.active { color: #34d399; background: rgba(52, 211, 153, 0.1); font-weight: 500; }
+    
+    .nav-group { margin-top: 1.5rem; margin-bottom: 0.5rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; color: #475569; padding-left: 0.75rem; }
+    
+    .card { background: #0f172a; border: 1px solid rgba(255,255,255,0.1); border-radius: 0.75rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+    
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    
+    section { scroll-margin-top: 2rem; }
+  </style>
+</head>
+<body class="antialiased flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 flex-shrink-0 border-r border-white/10 flex flex-col h-full bg-[#020617] z-20">
+    <div class="h-16 flex items-center px-6 border-b border-white/10">
+      <img src="django-meta-whatsapp.png" alt="Logo" class="w-9 h-9 rounded shrink-0 drop-shadow-md object-contain mr-3">
+      <span class="font-semibold text-white tracking-tight text-sm">django-meta-whatsapp</span>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4" id="sidebar-nav">
+      <div class="nav-group mt-0">Getting Started</div>
+      <a href="#overview" class="sidebar-link active">Overview</a>
+      <a href="#installation" class="sidebar-link">Installation</a>
+      <a href="#configuration" class="sidebar-link">Configuration</a>
+      
+      <div class="nav-group">Core Concepts</div>
+      <a href="#webhooks" class="sidebar-link">Webhooks Engine</a>
+      <a href="#contacts" class="sidebar-link">Contacts & Labels</a>
+      
+      <div class="nav-group">Messaging & Marketing</div>
+      <a href="#inbox" class="sidebar-link">Unified Inbox</a>
+      <a href="#campaigns" class="sidebar-link">Campaigns & Templates</a>
+      <a href="#signups" class="sidebar-link">In-App Signups</a>
+      <a href="#blocked" class="sidebar-link">Blocked Users</a>
+      
+      <div class="nav-group">Advanced Configuration</div>
+      <a href="#ui-customization" class="sidebar-link">UI Customization</a>
+      <a href="#multi-account" class="sidebar-link">Multi-Account Support</a>
+      <a href="#audiences" class="sidebar-link">Pluggable Audiences</a>
+      
+      <div class="nav-group">Developer API</div>
+      <a href="#rest-api" class="sidebar-link">REST API Endpoints</a>
+      <a href="#python-api" class="sidebar-link">Python Utility Functions</a>
+      <a href="#signals" class="sidebar-link">Django Signals</a>
+      <a href="#management" class="sidebar-link">Management Commands</a>
+      <a href="#models" class="sidebar-link">Models Reference</a>
+      <a href="#environment-variables" class="sidebar-link">Environment Variables</a>
+      
+      <div class="nav-group">About</div>
+      <a href="#developer" class="sidebar-link">Developer & Author</a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 h-full overflow-y-auto relative scroll-smooth bg-[#020617]" id="main-content">
+    
+    <!-- Top Header -->
+    <header class="h-16 border-b border-white/10 sticky top-0 bg-[#020617]/80 backdrop-blur-md z-10 flex items-center justify-between px-10">
+      <div class="text-sm text-gray-400 font-medium">Documentation / <span id="current-section-name" class="text-white">Overview</span></div>
+      <a href="https://github.com/rahul-baberwal/django-meta-whatsapp" target="_blank" class="text-gray-400 hover:text-white transition-colors">
+        <i data-lucide="github" class="w-5 h-5"></i>
+      </a>
+    </header>
+
+    <div class="max-w-3xl mx-auto px-10 py-12 pb-32">
+      
+      <section id="overview">
+        <h1>Welcome to django-meta-whatsapp</h1>
+        <p class="text-lg text-gray-400 mb-8">A production-ready WhatsApp Cloud Platform engine tailored exclusively for Django. Build CRM flows, blast campaigns, and chat with users natively.</p>
+        
+        <div class="grid grid-cols-2 gap-4 mb-8">
+          <div class="card m-0">
+            <i data-lucide="inbox" class="w-6 h-6 text-brand-400 mb-3"></i>
+            <h3 class="mt-0">Unified Inbox</h3>
+            <p class="text-sm m-0">Chat with customers in real-time. Full multimedia support.</p>
+          </div>
+          <div class="card m-0">
+            <i data-lucide="send" class="w-6 h-6 text-brand-400 mb-3"></i>
+            <h3 class="mt-0">Campaigns</h3>
+            <p class="text-sm m-0">Send bulk templated messages and track delivery/read rates.</p>
+          </div>
+          <div class="card m-0">
+            <i data-lucide="tag" class="w-6 h-6 text-brand-400 mb-3"></i>
+            <h3 class="mt-0">Contacts & Labels</h3>
+            <p class="text-sm m-0">Manage audiences with colored labels and CSV imports.</p>
+          </div>
+          <div class="card m-0">
+            <i data-lucide="webhook" class="w-6 h-6 text-brand-400 mb-3"></i>
+            <h3 class="mt-0">Webhooks</h3>
+            <p class="text-sm m-0">Plug-and-play secure webhooks for the WhatsApp Cloud API.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="installation">
+        <h2>Installation</h2>
+        <p>This package is built for modern Python environments and is best managed via <code>uv</code>.</p>
+        
+<pre><code># Using uv
+uv add django-meta-whatsapp
+
+# Or using pip
+pip install django-meta-whatsapp</code></pre>
+
+        <p>After installation, add the package to your <code>INSTALLED_APPS</code> in Django:</p>
+
+<pre><code>INSTALLED_APPS = [
+    # ...
+    "django_meta_whatsapp",
+]</code></pre>
+
+        <p>Mount the dashboard URLs in your project's <code>urls.py</code>:</p>
+<pre><code>from django.urls import path, include
+
+urlpatterns = [
+    # ...
+    path("whatsapp/", include("django_meta_whatsapp.urls", namespace="django_meta_whatsapp")),
+]</code></pre>
+      </section>
+
+      <section id="configuration">
+        <h2>Configuration</h2>
+        <p>Configure the package by adding the following variables to your <code>settings.py</code> file. You can obtain these from the Meta Developer Portal.</p>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Required Settings</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code>WHATSAPP_API_TOKEN = "EAA..."
+WHATSAPP_PHONE_NUMBER_ID = "1234567890"
+WHATSAPP_WEBHOOK_VERIFY_TOKEN = "your_secure_random_string"</code></pre>
+          
+          <h3 class="text-white">Optional UI Overrides</h3>
+<pre class="m-0 border-none bg-black/30"><code>WHATSAPP_DASHBOARD_NAME = "My Business CRM"
+WHATSAPP_DASHBOARD_LOGO = "https://yourwebsite.com/logo.png"</code></pre>
+        </div>
+        
+        <p>Finally, run migrations to set up the database schemas:</p>
+<pre><code>python manage.py migrate</code></pre>
+      </section>
+
+      <section id="webhooks">
+        <h2>Webhooks Engine</h2>
+        <p>The package automatically exposes a secure webhook endpoint to receive incoming messages, read receipts, and status updates from Meta.</p>
+        <p>In your Meta App Dashboard, set your Webhook URL to:</p>
+        <pre><code>https://yourdomain.com/whatsapp/webhook/</code></pre>
+        <p>And use the <code>WHATSAPP_WEBHOOK_VERIFY_TOKEN</code> you defined in settings.</p>
+        <p>When messages arrive, they are instantly recorded in the <code>WhatsAppMessage</code> database and surface in the real-time Unified Inbox.</p>
+      </section>
+
+      <section id="contacts">
+        <h2>Contacts & Labels</h2>
+        <p>The Contacts module acts as a mini-CRM for your WhatsApp audience. You can create contacts manually or import them via CSV.</p>
+        
+        <h3>Label Management</h3>
+        <p>Group your contacts using <strong>Labels</strong>. Labels support custom hexadecimal colors or Tailwind presets. You can create a label directly from the Contact creation form simply by typing it into the dropdown and pressing Enter.</p>
+        
+        <ul>
+          <li><strong>CSV Import:</strong> Include a <code>labels</code> column in your CSV (comma-separated). Missing labels are auto-created!</li>
+          <li><strong>Filtering:</strong> Use the dashboard to filter your contacts by label to easily prepare targeted campaigns.</li>
+        </ul>
+      </section>
+
+      <section id="inbox">
+        <h2>Unified Inbox</h2>
+        <p>A beautiful, real-time interface designed specifically for support and sales agents.</p>
+        <ul>
+          <li><strong>Conversation Threads:</strong> Messages are cleanly grouped by Contact.</li>
+          <li><strong>Read Receipts:</strong> See exactly when your messages are delivered and read.</li>
+          <li><strong>Labeling:</strong> Assign labels directly to specific conversation threads.</li>
+        </ul>
+      </section>
+      
+      <section id="campaigns">
+        <h2>Campaigns & Templates</h2>
+        <p>Marketing on WhatsApp requires pre-approved Templates. The platform seamlessly syncs with Meta to pull down your templates.</p>
+        
+        <h3>Syncing Templates</h3>
+        <p>Navigate to the <strong>Templates</strong> tab in the dashboard and click "Sync from Meta". All approved templates will be instantly available for your campaigns.</p>
+        
+        <h3>Running a Campaign</h3>
+        <p>Create a new Campaign, select a synced template, and attach an audience by selecting specific Contacts or a specific Label. The engine will dispatch the messages via API and update the Campaign's status to reflect Deliveries, Reads, and Bounces.</p>
+      </section>
+
+      <section id="signups">
+        <h2>In-App Signups</h2>
+        <p>Utilize Graph API v22+ In-App Signups to easily build an audience. Create a "Signup Link" in the dashboard.</p>
+        <p>Share the <code>wa.me/.../signup/...</code> deep link on your website. When users tap it, WhatsApp opens and asks them to opt-in. When they do, the webhook automatically creates a <code>WhatsAppContact</code> record and links it to the signup source.</p>
+      </section>
+
+      <section id="blocked">
+        <h2>Blocked Users Sync</h2>
+        <p>Stop wasting API calls and getting flagged for spam. When a user blocks your business on WhatsApp, the webhook detects the <code>blocked</code> status and automatically updates the Contact record as `is_blocked = True`.</p>
+        <p>These users are automatically excluded from future Campaigns, keeping your account health in pristine condition.</p>
+      </section>
+
+      <section id="python-api">
+        <h2>Python Utility Functions</h2>
+        <p>You can use the built-in <code>django_meta_whatsapp.utils</code> module to programmatically send messages from anywhere in your Django backend (e.g., in signals, Celery tasks, or custom views).</p>
+        
+        <div class="card">
+          <h3 class="mt-0 text-white">Send Text Message</h3>
+          <p class="text-sm">Sends a plain text message to a user. Pass an optional <code>WhatsAppAccount</code> instance if using multi-account mode.</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">from django_meta_whatsapp.utils import send_text_message
+
+response = send_text_message(
+    phone_number="919876543210", 
+    text="Hello from Django!", 
+    account=my_account_instance # optional
+)</code></pre>
+        </div>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Send Location Pin</h3>
+          <p class="text-sm">Sends a map location pin with an optional name and address.</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">from django_meta_whatsapp.utils import send_location_message
+
+send_location_message(
+    phone_number="919876543210",
+    latitude=28.6139,
+    longitude=77.2090,
+    name="Our Store",
+    address="New Delhi, India"
+)</code></pre>
+        </div>
+        
+        <div class="card">
+          <h3 class="mt-0 text-white">Upload & Send Media</h3>
+          <p class="text-sm">First upload the media to Meta's servers, then dispatch the media message.</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">from django_meta_whatsapp.utils import upload_media, send_media_message
+
+# 1. Upload Media
+with open("invoice.pdf", "rb") as f:
+    media_id = upload_media(f, mime_type="application/pdf")
+
+# 2. Send Document
+send_media_message(
+    phone_number="919876543210",
+    media_id=media_id,
+    media_type="document",
+    filename="invoice.pdf",
+    caption="Here is your requested invoice."
+)</code></pre>
+        </div>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Send Template Message</h3>
+          <p class="text-sm">Dispatch an approved WhatsApp template with dynamic variables and buttons using the <code>build_template_components</code> helper.</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">from django_meta_whatsapp.utils import send_template_message, build_template_components
+
+# Build the dynamic variables (e.g. for {{1}} and {{2}} in the body)
+components = build_template_components(
+    body_params=["Rahul", "Tomorrow 5 PM"]
+)
+
+send_template_message(
+    phone_number="919876543210",
+    template_name="appointment_reminder",
+    language_code="en",
+    components=components
+)</code></pre>
+        </div>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Template Management</h3>
+          <p class="text-sm">Programmatically interact with Meta to fetch, push, or delete your message templates.</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">from django_meta_whatsapp.utils import (
+    sync_templates_from_meta,
+    push_template_to_meta,
+    delete_template_from_meta
+)
+
+# Fetch all templates from Meta
+templates = sync_templates_from_meta()
+
+# Delete a template from Meta
+response = delete_template_from_meta(template_name="holiday_sale")</code></pre>
+        </div>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Campaign Execution</h3>
+          <p class="text-sm">Trigger marketing campaigns from code. You can run them synchronously, or asynchronously via Celery if configured.</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">from django_meta_whatsapp.utils import run_campaign, run_campaign_async
+
+# Run a campaign synchronously
+results = run_campaign(campaign_id=1)
+print(f"Sent: {results['sent']}, Failed: {results['failed']}")
+
+# Or trigger it via Celery (requires WHATSAPP_USE_CELERY = True)
+run_campaign_async(campaign_id=2)</code></pre>
+        </div>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Block Users API</h3>
+          <p class="text-sm">Block users at the API level so you don't receive webhooks from them or accidentally message them.</p>
+<pre class="m-0 border-none bg-black/30"><code class="language-python">from django_meta_whatsapp.utils import block_users
+
+# Block up to 1,000 phone numbers in a single call
+block_users(phone_numbers=["919876543210", "1234567890"])</code></pre>
+        </div>
+      </section>
+
+      <section id="ui-customization">
+        <h2>Dashboard UI Customization</h2>
+        <p>You can customize the look and feel of the WhatsApp Dashboard directly from your <code>settings.py</code>. All of these settings are optional!</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python"># Replace the text name in the sidebar (default: "WhatsApp")
+META_WHATSAPP_DASHBOARD_NAME = "My Custom App"
+
+# Change the Lucide icon used in the sidebar (default: "message-circle")
+META_WHATSAPP_DASHBOARD_ICON = "building-2"
+
+# Or, use a complete custom image logo instead of the icon
+META_WHATSAPP_DASHBOARD_LOGO = "/static/logo.png"
+
+# Change the primary accent color of the entire dashboard! (Provide an HSL triplet)
+META_WHATSAPP_ACCENT_COLOR = "142, 72%, 45%"   # Emerald green</code></pre>
+      </section>
+
+      <section id="multi-account">
+        <h2>Multi-Account Support</h2>
+        <p>Add accounts in the <strong>Settings → Accounts</strong> dashboard. Each account has its own:</p>
+        <ul>
+            <li>Access Token</li>
+            <li>Phone Number ID</li>
+            <li>WABA ID</li>
+            <li>Verify Token</li>
+        </ul>
+        <p>The webhook endpoint (<code>/whatsapp/webhook/</code>) auto-routes to the correct account by <code>phone_number_id</code>.</p>
+      </section>
+
+      <section id="audiences">
+        <h2>Pluggable Audience System</h2>
+        <p>The package never assumes your user model. You control who receives campaigns by injecting your own logic.</p>
+        
+        <h3>Option 1: Named Audience Providers</h3>
+        <p>Provide a function that returns a queryset of recipients.</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python"># myapp/whatsapp_audiences.py
+from myapp.models import Customer
+
+def vip_customers():
+    return Customer.objects.filter(total_orders__gt=10)</code></pre>
+
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python"># settings.py
+WHATSAPP = {
+    "PHONE_FIELD": "mobile",      # field on your model that holds the phone number
+    "NAME_FIELD": "full_name",    # field for the display name
+    "AUDIENCES": {
+        "VIP Customers": "myapp.whatsapp_audiences.vip_customers",
+    },
+}</code></pre>
+
+        <h3>Option 2: Full Campaign Resolver</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python"># settings.py
+WHATSAPP = {
+    "CAMPAIGN_RESOLVER": "myapp.whatsapp_audiences.resolve_campaign",
+}</code></pre>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python"># myapp.whatsapp_audiences.py
+def resolve_campaign(campaign):
+    if campaign.audience_type == "vip":
+        qs = Customer.objects.filter(total_orders__gt=10)
+        return [{"phone": c.mobile, "name": c.full_name, "params": {}} for c in qs]
+    return []</code></pre>
+      </section>
+
+      <section id="rest-api">
+        <h2>REST API Endpoints</h2>
+        <p>You can interact with the package using standard HTTP REST APIs. All endpoints require an <code>X-API-Key</code> header (generate these in the dashboard under <strong>Settings → API Keys</strong>).</p>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Endpoints</h3>
+          <ul class="mb-0">
+            <li><strong>POST</strong> <code>/whatsapp/api/send-message/</code> - Send text message</li>
+            <li><strong>POST</strong> <code>/whatsapp/api/send-location/</code> - Send location pin</li>
+            <li><strong>POST</strong> <code>/whatsapp/api/send-template/</code> - Send approved template</li>
+            <li><strong>GET</strong> <code>/whatsapp/api/chats/</code> - List recent conversations</li>
+            <li><strong>GET</strong> <code>/whatsapp/api/campaigns/</code> - List campaigns</li>
+          </ul>
+        </div>
+        
+        <div class="card">
+          <h3 class="mt-0 text-white">Send Text (cURL)</h3>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-bash">curl -X POST http://yourdomain.com/whatsapp/api/send-message/ \
+  -H "X-API-Key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "919876543210", "message": "Hello!"}'</code></pre>
+        </div>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Send Template (cURL)</h3>
+<pre class="m-0 border-none bg-black/30"><code class="language-bash">curl -X POST http://yourdomain.com/whatsapp/api/send-template/ \
+  -H "X-API-Key: your-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "919876543210",
+    "template_name": "order_confirmation",
+    "language": "en",
+    "body_params": ["Rakesh", "ORD-1234"]
+  }'</code></pre>
+        </div>
+      </section>
+
+      <section id="signals">
+        <h2>Django Signals</h2>
+        <p>Hook into the WhatsApp lifecycle directly in your Django app.</p>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">from django.dispatch import receiver
+from django_meta_whatsapp.signals import (
+    whatsapp_message_received,
+    whatsapp_message_sent,
+    whatsapp_campaign_completed,
+)
+
+@receiver(whatsapp_message_received)
+def on_inbound(sender, message, **kwargs):
+    print(f"New message from {message.phone_number}: {message.message_body}")
+
+@receiver(whatsapp_campaign_completed)
+def on_campaign_done(sender, campaign, sent, failed, **kwargs):
+    print(f"Campaign '{campaign.name}' finished: {sent} sent, {failed} failed")</code></pre>
+      </section>
+
+      <section id="management">
+        <h2>Management Commands</h2>
+<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-bash"># Sync templates from Meta
+python manage.py wa_sync_templates
+
+# Sync for a specific account (if multi-account)
+python manage.py wa_sync_templates --account-id 1</code></pre>
+      </section>
+
+      <section id="models">
+        <h2>Models Reference</h2>
+        <div class="card p-0 overflow-hidden">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-white/5 border-b border-white/10 text-white">
+                        <th class="p-3 font-semibold text-sm">Model</th>
+                        <th class="p-3 font-semibold text-sm">Purpose</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm text-gray-300">
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppAccount</td><td class="p-3">Multi-account credentials</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppContact</td><td class="p-3">Contact directory</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppConversation</td><td class="p-3">Grouped chat threads</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppMessage</td><td class="p-3">Individual messages (text, media, location, etc.)</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppTemplate</td><td class="p-3">Meta-approved message templates</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppCampaign</td><td class="p-3">Bulk send campaigns</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppCampaignRecipient</td><td class="p-3">Per-recipient status tracking</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppMedia</td><td class="p-3">Uploaded media library</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppWebhookLog</td><td class="p-3">Raw webhook event logs</td></tr>
+                    <tr class=""><td class="p-3 font-mono text-brand-400">WhatsAppAPIKey</td><td class="p-3">REST API authentication keys</td></tr>
+                </tbody>
+            </table>
+        </div>
+      </section>
+
+      <section id="environment-variables">
+        <h2>Environment Variables</h2>
+        <p>If you prefer 12-factor app architecture, you can configure the package using environment variables instead of <code>settings.py</code>.</p>
+<pre class="m-0 border-none bg-black/30"><code class="language-bash">META_WA_ACCESS_TOKEN=EAAx...
+META_WA_PHONE_NUMBER_ID=1234567890
+META_WABA_ID=9876543210
+META_WA_VERIFY_TOKEN=my_secret_verify_token</code></pre>
+      </section>
+
+      <section id="developer">
+        <h2>Developer & Author</h2>
+        <div class="card flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          <img src="https://github.com/rahul-baberwal.png" alt="Rahul Baberwal" class="w-24 h-24 rounded-full object-cover shrink-0 border-2 border-brand-500/30 shadow-[0_0_15px_rgba(34,197,94,0.15)]">
+          <div>
+            <h3 class="mt-0 mb-2 text-white text-xl">Rahul Baberwal</h3>
+            <p class="text-sm text-gray-400 mb-4">Creator of django-meta-whatsapp. Passionate about building robust tools for developers.</p>
+            <div class="flex flex-wrap gap-3">
+              <a href="https://rahulbaberwal.com" target="_blank" class="px-4 py-2 bg-white/5 hover:bg-brand-500 hover:text-white text-gray-300 rounded text-sm transition-colors border border-white/10 no-underline inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                Website
+              </a>
+              <a href="https://github.com/rahul-baberwal" target="_blank" class="px-4 py-2 bg-white/5 hover:bg-brand-500 hover:text-white text-gray-300 rounded text-sm transition-colors border border-white/10 no-underline inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                GitHub
+              </a>
+              <a href="https://gitlab.com/rahul-baberwal" target="_blank" class="px-4 py-2 bg-white/5 hover:bg-brand-500 hover:text-white text-gray-300 rounded text-sm transition-colors border border-white/10 no-underline inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.65 14.39L12 22.13 1.35 14.39a.84.84 0 0 1-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 0 1 4.82 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0 1 18.6 2a.43.43 0 0 1 .58 0 .42.42 0 0 1 .11.18l2.44 7.51L23 13.45a.84.84 0 0 1-.35.94z"></path></svg>
+                GitLab
+              </a>
+              <a href="https://linkedin.com/in/rahul-baberwal" target="_blank" class="px-4 py-2 bg-white/5 hover:bg-brand-500 hover:text-white text-gray-300 rounded text-sm transition-colors border border-white/10 no-underline inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                LinkedIn
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <script>
+    lucide.createIcons();
+    
+    // ScrollSpy Logic
+    const mainContent = document.getElementById("main-content");
+    const sections = Array.from(document.querySelectorAll("section[id]"));
+    const navLinks = document.querySelectorAll("#sidebar-nav a");
+    const headerTitle = document.getElementById("current-section-name");
+    
+    // Click handling for smooth scroll within the scrollable container
+    navLinks.forEach(link => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const targetId = link.getAttribute("href").substring(1);
+        const targetSection = document.getElementById(targetId);
+        if (targetSection) {
+          mainContent.scrollTo({
+            top: targetSection.offsetTop - 40,
+            behavior: "smooth"
+          });
+          // Update URL without jumping
+          history.pushState(null, null, `#${targetId}`);
+        }
+      });
+    });
+    
+    // Scroll detection
+    mainContent.addEventListener("scroll", () => {
+      let currentId = sections[0].id;
+      let currentName = "Overview";
+      
+      for (const section of sections) {
+        // 100px offset to trigger slightly before it hits the top
+        if (mainContent.scrollTop >= (section.offsetTop - 100)) {
+          currentId = section.id;
+          currentName = section.querySelector("h1, h2").innerText;
+        }
+      }
+      
+      // Update sidebar
+      navLinks.forEach(link => {
+        link.classList.remove("active");
+        if (link.getAttribute("href") === `#${currentId}`) {
+          link.classList.add("active");
+        }
+      });
+      
+      // Update header
+      headerTitle.innerText = currentName;
+    });
+  </script>
+
+  <div id="github-popup" class="fixed bottom-6 right-6 bg-gray-900 border border-brand-500/50 shadow-[0_0_20px_rgba(34,197,94,0.15)] rounded-lg p-5 max-w-sm z-50 flex gap-4 items-start transform transition-all duration-700 translate-y-20 opacity-0 pointer-events-none">
+    <div class="text-brand-500 mt-1">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+    </div>
+    <div class="flex-1">
+      <h4 class="text-white font-semibold m-0 mb-1 text-base">Find this useful?</h4>
+      <p class="text-sm text-gray-400 m-0 mb-4 leading-snug">Support the project by leaving a star or forking it on GitHub!</p>
+      <div class="flex gap-3">
+        <a href="https://github.com/rahul-baberwal/django-meta-whatsapp" target="_blank" class="px-3 py-1.5 bg-brand-500 hover:bg-brand-400 text-white text-xs font-semibold rounded transition-colors no-underline flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg> Star Repo
+        </a>
+        <a href="https://github.com/rahul-baberwal/django-meta-whatsapp/fork" target="_blank" class="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white text-xs font-semibold rounded transition-colors no-underline flex items-center gap-1.5 border border-white/10">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"></path><path d="M12 12v3"></path></svg> Fork
+        </a>
+      </div>
+    </div>
+    <button onclick="document.getElementById('github-popup').style.display='none'" class="text-gray-500 hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0 outline-none">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  
+  <script>
+    // Smooth scrolling for sidebar links
+    document.querySelectorAll('.sidebar-link').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        const targetElement = document.getElementById(targetId);
+        
+        if (targetElement) {
+          window.scrollTo({
+            top: targetElement.offsetTop - 30,
+            behavior: 'smooth'
+          });
+          
+          // Update URL without jump
+          history.pushState(null, null, `#${targetId}`);
+        }
+      });
+    });
+
+    // Active link highlighting on scroll
+    window.addEventListener('scroll', () => {
+      let current = '';
+      const sections = document.querySelectorAll('section');
+      
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+        if (pageYOffset >= (sectionTop - 150)) {
+          current = section.getAttribute('id');
+        }
+      });
+
+      document.querySelectorAll('.sidebar-link').forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href').substring(1) === current) {
+          link.classList.add('active');
+        }
+      });
+    });
+    
+    // Popup animation
+    setTimeout(() => {
+      const popup = document.getElementById('github-popup');
+      if (popup) {
+        popup.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+      }
+    }, 2000);
+  </script>
+</body>
+</html>

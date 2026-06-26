@@ -1,0 +1,69 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}Opt-in Links{% endblock %}
+{% block page_title %}Opt-in Links{% endblock %}
+{% block topbar_actions %}
+<a href="{% url 'django_meta_whatsapp:signup_create' %}" class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+  <i data-lucide="plus" class="w-4 h-4"></i> New Opt-in Link
+</a>
+{% endblock %}
+{% block content %}
+<div class="space-y-4">
+  <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+    <table class="w-full">
+      <thead class="bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Display Name</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Subscribers</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Promo Code</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Link</th>
+          <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for signup in signups %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ signup.display_name }}</td>
+          <td class="px-4 py-3 text-sm text-gray-500">{{ signup.subscriber_count }}</td>
+          <td class="px-4 py-3">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+              {% if signup.status == 'ACTIVE' %}bg-emerald-100 text-emerald-700
+              {% else %}bg-gray-100 text-gray-600{% endif %}">
+              {{ signup.status }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-sm text-gray-500">{{ signup.promo_code|default:"-" }}</td>
+          <td class="px-4 py-3 text-sm">
+            <div class="flex items-center gap-2">
+              <input type="text" readonly value="{{ signup.get_deep_link|default:'' }}" class="bg-gray-50 border border-gray-200 text-xs rounded px-2 py-1 w-48 truncate">
+              <button type="button" onclick="navigator.clipboard.writeText('{{ signup.get_deep_link }}')" class="text-gray-400 hover:text-emerald-600" title="Copy Link"><i data-lucide="copy" class="w-4 h-4"></i></button>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-right">
+            <div class="flex items-center justify-end gap-2">
+              {% if signup.status == 'ACTIVE' %}
+              <a href="{% url 'django_meta_whatsapp:signup_update' signup.pk %}" class="text-gray-400 hover:text-blue-600" title="Edit"><i data-lucide="pencil" class="w-4 h-4"></i></a>
+              <form method="post" action="{% url 'django_meta_whatsapp:signup_disable' signup.pk %}" class="inline" onsubmit="return confirm('Are you sure you want to disable this link? This cannot be undone.');">
+                {% csrf_token %}
+                <button type="submit" class="text-gray-400 hover:text-red-600" title="Disable"><i data-lucide="slash" class="w-4 h-4"></i></button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+            <div class="flex flex-col items-center justify-center">
+              <i data-lucide="link" class="w-12 h-12 text-gray-300 mb-3"></i>
+              <p class="text-sm font-medium text-gray-900">No opt-in links found</p>
+              <p class="text-xs mt-1">Create an opt-in deep link to grow your WhatsApp subscriber list.</p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
