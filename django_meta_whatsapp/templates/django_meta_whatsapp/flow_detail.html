@@ -1,0 +1,288 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}{{ flow.name }}{% endblock %}
+{% block page_title %}{{ flow.name }}{% endblock %}
+{% block page_subtitle %}
+<div class="flex items-center gap-2 mt-0.5">
+  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+    {% if flow.status == 'PUBLISHED' %}bg-emerald-100 text-emerald-700
+    {% elif flow.status == 'DRAFT' %}bg-amber-100 text-amber-700
+    {% elif flow.status == 'DEPRECATED' %}bg-gray-100 text-gray-500
+    {% elif flow.status == 'BLOCKED' %}bg-red-100 text-red-700
+    {% else %}bg-gray-100 text-gray-600{% endif %}">
+    {{ flow.get_status_display }}
+  </span>
+  {% if flow.is_dynamic %}<span class="text-xs text-purple-600 font-medium flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> Dynamic</span>{% endif %}
+  {% if flow.meta_flow_id %}<span class="text-xs text-gray-400 font-mono">ID: {{ flow.meta_flow_id }}</span>{% endif %}
+</div>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'django_meta_whatsapp:flow_list' %}" class="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+  <i data-lucide="arrow-left" class="w-4 h-4"></i> All Flows
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+  <!-- Left: Info + actions -->
+  <div class="lg:col-span-1 space-y-4">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+        <p class="text-2xl font-bold text-gray-900">{{ flow.sent_count }}</p>
+        <p class="text-xs text-gray-500 mt-0.5">Sent</p>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
+        <a href="{% url 'django_meta_whatsapp:flow_responses' flow.pk %}" class="block">
+          <p class="text-2xl font-bold text-emerald-600">{{ response_count }}</p>
+          <p class="text-xs text-gray-500 mt-0.5">Completions</p>
+        </a>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-2">
+      <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Actions</h3>
+
+      <!-- Upload JSON -->
+      {% if flow.can_upload %}
+      <button onclick="document.getElementById('uploadModal').classList.remove('hidden')"
+        class="w-full inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+        <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload JSON to Meta
+      </button>
+      {% endif %}
+
+      <!-- Publish -->
+      {% if flow.can_publish %}
+      <form method="post" action="{% url 'django_meta_whatsapp:flow_publish' flow.pk %}">
+        {% csrf_token %}
+        <button type="submit"
+          class="w-full inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors"
+          onclick="return confirm('Publish this flow? Once published it cannot be edited — clone it to make changes.')">
+          <i data-lucide="send" class="w-4 h-4"></i> Publish Flow
+        </button>
+      </form>
+      {% endif %}
+
+      <!-- Send Flow Message -->
+      {% if flow.meta_flow_id %}
+      <button onclick="document.getElementById('sendModal').classList.remove('hidden')"
+        class="w-full inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-gray-900 hover:bg-gray-700 text-white rounded-lg transition-colors">
+        <i data-lucide="message-circle" class="w-4 h-4"></i>
+        Send to Phone Number
+        {% if flow.status == 'DRAFT' %}<span class="text-xs bg-amber-400 text-gray-900 px-1.5 py-0.5 rounded ml-auto">Test Mode</span>{% endif %}
+      </button>
+      {% endif %}
+
+      <!-- View Responses -->
+      <a href="{% url 'django_meta_whatsapp:flow_responses' flow.pk %}"
+        class="w-full inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors">
+        <i data-lucide="inbox" class="w-4 h-4"></i> View Responses
+        {% if response_count %}<span class="ml-auto bg-emerald-100 text-emerald-700 text-xs font-medium px-1.5 py-0.5 rounded-full">{{ response_count }}</span>{% endif %}
+      </a>
+
+      <!-- Clone -->
+      <form method="post" action="{% url 'django_meta_whatsapp:flow_clone' flow.pk %}">
+        {% csrf_token %}
+        <button type="submit"
+          class="w-full inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white border border-gray-200 hover:bg-indigo-50 hover:border-indigo-300 text-gray-700 hover:text-indigo-700 rounded-lg transition-colors">
+          <i data-lucide="copy" class="w-4 h-4"></i> Clone Flow
+        </button>
+      </form>
+
+      <!-- Deprecate -->
+      {% if flow.can_deprecate %}
+      <form method="post" action="{% url 'django_meta_whatsapp:flow_deprecate' flow.pk %}">
+        {% csrf_token %}
+        <button type="submit"
+          class="w-full inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white border border-gray-200 hover:bg-amber-50 hover:border-amber-300 text-gray-700 hover:text-amber-700 rounded-lg transition-colors"
+          onclick="return confirm('Deprecate this flow? It will no longer be sent to new users.')">
+          <i data-lucide="archive" class="w-4 h-4"></i> Deprecate
+        </button>
+      </form>
+      {% endif %}
+
+      <!-- Delete -->
+      {% if flow.can_delete %}
+      <form method="post" action="{% url 'django_meta_whatsapp:flow_delete' flow.pk %}">
+        {% csrf_token %}
+        <button type="submit"
+          class="w-full inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium bg-white border border-red-200 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+          onclick="return confirm('Permanently delete this flow from Meta? This cannot be undone.')">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> Delete Flow
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <!-- Validation Errors -->
+    {% if flow.validation_errors %}
+    <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+      <h3 class="text-sm font-semibold text-red-700 flex items-center gap-2 mb-2">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i> Validation Errors ({{ flow.validation_errors|length }})
+      </h3>
+      <ul class="space-y-1">
+        {% for err in flow.validation_errors %}
+        <li class="text-xs text-red-600">• {{ err }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Meta Info -->
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-xs text-gray-500 space-y-1.5">
+      <div class="flex justify-between"><span class="text-gray-400">Created</span><span>{{ flow.created_at|date:"M d, Y H:i" }}</span></div>
+      <div class="flex justify-between"><span class="text-gray-400">Updated</span><span>{{ flow.updated_at|date:"M d, Y H:i" }}</span></div>
+      {% if flow.endpoint_uri %}<div class="flex justify-between gap-2"><span class="text-gray-400 flex-shrink-0">Endpoint</span><span class="font-mono truncate text-purple-600">{{ flow.endpoint_uri }}</span></div>{% endif %}
+    </div>
+
+    <!-- Recent Responses -->
+    {% if recent_responses %}
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+      <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Recent Submissions</h3>
+      <div class="space-y-2">
+        {% for resp in recent_responses %}
+        <div class="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+          <div>
+            <p class="text-xs font-medium text-gray-800">{{ resp.phone_number }}</p>
+            <p class="text-xs text-gray-400">{{ resp.completed_at|date:"M d, H:i" }}</p>
+          </div>
+          {% if not resp.processed %}<span class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">New</span>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <a href="{% url 'django_meta_whatsapp:flow_responses' flow.pk %}" class="mt-3 block text-xs text-emerald-600 hover:underline text-center">View all →</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: JSON Editor -->
+  <div class="lg:col-span-2">
+    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <i data-lucide="code-2" class="w-4 h-4 text-gray-400"></i> Flow JSON
+          <span class="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono">local copy</span>
+        </h2>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="formatJson()" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded">Format</button>
+          <a href="https://developers.facebook.com/docs/whatsapp/flows/reference/flowjson" target="_blank" class="text-xs text-blue-500 hover:underline">Docs ↗</a>
+        </div>
+      </div>
+
+      {% if flow.can_upload %}
+      <!-- Editable form for DRAFT flows -->
+      <form id="upload-form" method="post" action="{% url 'django_meta_whatsapp:flow_upload' flow.pk %}">
+        {% csrf_token %}
+        <textarea name="flow_json" id="flow_json_editor" rows="28"
+          class="w-full text-xs font-mono border border-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y bg-gray-50"
+          style="min-height:400px;">{{ flow_json_str }}</textarea>
+        <div class="flex items-center justify-between mt-3">
+          <p class="text-xs text-gray-400">Edit the JSON above, then click "Save & Upload" to push it to Meta.</p>
+          <button type="submit"
+            class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i> Save & Upload to Meta
+          </button>
+        </div>
+      </form>
+      {% else %}
+      <!-- Read-only for published/deprecated flows -->
+      <pre class="w-full text-xs font-mono border border-gray-200 rounded-lg p-3 bg-gray-50 overflow-auto" style="min-height:400px; max-height:600px;">{{ flow_json_str }}</pre>
+      <p class="text-xs text-gray-400 mt-2">JSON is read-only once a flow is published. <a href="{% url 'django_meta_whatsapp:flow_clone' flow.pk %}" class="text-emerald-600 hover:underline">Clone this flow</a> to make a new editable version.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+
+<!-- Send Modal -->
+<div id="sendModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl">
+    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <h3 class="text-base font-semibold text-gray-900">Send Flow Message</h3>
+      <button onclick="document.getElementById('sendModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form method="post" action="{% url 'django_meta_whatsapp:flow_send' flow.pk %}" class="p-6 space-y-4">
+      {% csrf_token %}
+      {% if flow.status == 'DRAFT' %}
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-700 flex gap-2">
+        <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+        <span>This flow is in <strong>Draft mode</strong> — the message will open in test mode. Publish the flow to send it for real.</span>
+      </div>
+      {% endif %}
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Phone Number <span class="text-red-500">*</span></label>
+        <input type="tel" name="phone" required placeholder="919876543210 (with country code, no +)"
+          class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">CTA Button Text</label>
+        <input type="text" name="cta_text" value="Open Form" maxlength="20"
+          class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1">Message Body</label>
+        <textarea name="body_text" rows="3"
+          class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">Please complete the form.</textarea>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Header (optional)</label>
+          <input type="text" name="header_text" placeholder="e.g. Quick Survey"
+            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Footer (optional)</label>
+          <input type="text" name="footer_text" placeholder="e.g. Takes 30 seconds"
+            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="document.getElementById('sendModal').classList.add('hidden')"
+          class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+        <button type="submit"
+          class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-700 rounded-lg transition-colors">
+          <i data-lucide="send" class="w-4 h-4"></i> Send
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Upload Confirm Modal (separate from inline form — kept for the action button in sidebar) -->
+<div id="uploadModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm">
+  <div class="bg-white rounded-2xl w-full max-w-sm mx-4 shadow-2xl p-6">
+    <h3 class="text-base font-semibold text-gray-900 mb-2 flex items-center gap-2">
+      <i data-lucide="upload-cloud" class="w-5 h-5 text-blue-600"></i> Upload Current JSON?
+    </h3>
+    <p class="text-sm text-gray-600 mb-4">The JSON in the editor will be saved and uploaded to Meta for validation. Any validation errors will be shown here.</p>
+    <div class="flex justify-end gap-3">
+      <button onclick="document.getElementById('uploadModal').classList.add('hidden')"
+        class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
+      <button onclick="document.getElementById('upload-form').submit()"
+        class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+        <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function formatJson() {
+  const editor = document.getElementById('flow_json_editor');
+  if (!editor) return;
+  try {
+    const parsed = JSON.parse(editor.value);
+    editor.value = JSON.stringify(parsed, null, 2);
+  } catch(e) {
+    alert('Invalid JSON: ' + e.message);
+  }
+}
+</script>
+{% endblock %}

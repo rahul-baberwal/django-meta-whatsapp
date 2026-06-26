@@ -602,3 +602,156 @@ class WhatsAppBlockedUser(models.Model):
     def __str__(self):
         status = "blocked" if self.is_active else "unblocked"
         return f"{self.phone_number} [{status}]"
+
+
+# ─────────────────────────────────────────────
+# WhatsApp Flows
+# ─────────────────────────────────────────────
+
+class WhatsAppFlow(models.Model):
+    """
+    Represents one WhatsApp Flow — the full design is stored locally so it can be
+    cloned, versioned, and re-uploaded without relying on Meta's read endpoint.
+
+    Lifecycle: DRAFT → upload JSON → PUBLISHED → (optional) DEPRECATED
+    Once published, Flows cannot be edited on Meta — clone to make updates.
+    """
+    STATUS_CHOICES = [
+        ("DRAFT", "Draft"),
+        ("PUBLISHED", "Published"),
+        ("DEPRECATED", "Deprecated"),
+        ("BLOCKED", "Blocked"),
+        ("THROTTLED", "Throttled"),
+    ]
+    CATEGORY_CHOICES = [
+        ("SIGN_UP", "Sign Up"),
+        ("SIGN_IN", "Sign In"),
+        ("APPOINTMENT_BOOKING", "Appointment Booking"),
+        ("LEAD_GENERATION", "Lead Generation"),
+        ("CONTACT_US", "Contact Us"),
+        ("CUSTOMER_SUPPORT", "Customer Support"),
+        ("SURVEY", "Survey"),
+        ("OTHER", "Other"),
+    ]
+
+    account = models.ForeignKey(
+        WhatsAppAccount,
+        on_delete=models.CASCADE,
+        related_name="flows",
+    )
+    name = models.CharField(max_length=255)
+
+    # Meta identifiers
+    meta_flow_id = models.CharField(
+        max_length=100, blank=True,
+        help_text="ID returned by Meta after creation via Graph API"
+    )
+    categories = models.JSONField(
+        default=list,
+        help_text='e.g. ["CUSTOMER_SUPPORT"] — choose from CATEGORY_CHOICES'
+    )
+
+    # The full Flow JSON (version 7.2+) stored locally for cloning / re-upload
+    flow_json = models.JSONField(
+        default=dict,
+        help_text="Complete Flow JSON — see https://developers.facebook.com/docs/whatsapp/flows/reference/flowjson"
+    )
+
+    # Dynamic flows
+    is_dynamic = models.BooleanField(
+        default=False,
+        help_text="True if this flow calls your server endpoint between screens"
+    )
+    endpoint_uri = models.URLField(
+        blank=True,
+        help_text="For dynamic flows only — the HTTPS endpoint Meta will call"
+    )
+
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="DRAFT"
+    )
+    validation_errors = models.JSONField(
+        default=list,
+        help_text="Populated after a flow JSON upload attempt from Meta's response"
+    )
+
+    # Basic stats updated from webhooks / send calls
+    sent_count = models.PositiveIntegerField(default=0)
+    completion_count = models.PositiveIntegerField(default=0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "WhatsApp Flow"
+        verbose_name_plural = "WhatsApp Flows"
+
+    def __str__(self):
+        return f"{self.name} [{self.status}]"
+
+    @property
+    def can_upload(self):
+        """JSON can be uploaded/re-uploaded only while the flow is DRAFT."""
+        return self.status == "DRAFT"
+
+    @property
+    def can_publish(self):
+        return self.status == "DRAFT" and bool(self.meta_flow_id)
+
+    @property
+    def can_deprecate(self):
+        return self.status == "PUBLISHED"
+
+    @property
+    def can_delete(self):
+        return self.status == "DRAFT"
+
+
+class WhatsAppFlowResponse(models.Model):
+    """
+    Stores the structured data submitted by a customer when they complete a Flow.
+    One row per submission — received via the existing webhook as an 'nfm_reply'.
+
+    The host project can:
+      - Hook the `whatsapp_flow_completed` signal to process responses.
+      - Set `processed = True` after handling to track what's been acted on.
+    """
+    flow = models.ForeignKey(
+        WhatsAppFlow,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="responses",
+    )
+    conversation = models.ForeignKey(
+        WhatsAppConversation,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="flow_responses",
+    )
+    phone_number = models.CharField(max_length=30)
+    response_data = models.JSONField(
+        help_text="The payload object submitted by the user in the flow"
+    )
+    flow_token = models.CharField(
+        max_length=512, blank=True,
+        help_text="Meta's flow_token from the webhook payload"
+    )
+    completed_at = models.DateTimeField(auto_now_add=True)
+    processed = models.BooleanField(
+        default=False,
+        help_text="Set to True by the host project after the response has been handled"
+    )
+    raw_payload = models.JSONField(
+        null=True, blank=True,
+        help_text="Full webhook message payload for debugging"
+    )
+
+    class Meta:
+        ordering = ["-completed_at"]
+        verbose_name = "Flow Response"
+        verbose_name_plural = "Flow Responses"
+
+    def __str__(self):
+        flow_name = self.flow.name if self.flow else "unknown flow"
+        return f"{self.phone_number} → {flow_name} @ {self.completed_at:%Y-%m-%d %H:%M}"

@@ -55,6 +55,17 @@ urlpatterns = [
     path("campaigns/<int:pk>/edit/", views.CampaignUpdateView.as_view(), name="campaign_update"),
     path("campaigns/<int:pk>/delete/", views.CampaignDeleteView.as_view(), name="campaign_delete"),
     path("campaigns/<int:pk>/run/", views.CampaignRunView.as_view(), name="campaign_run"),
+    # Flows
+    path("flows/", views.FlowListView.as_view(), name="flow_list"),
+    path("flows/add/", views.FlowCreateView.as_view(), name="flow_create"),
+    path("flows/<int:pk>/", views.FlowDetailView.as_view(), name="flow_detail"),
+    path("flows/<int:pk>/upload/", views.FlowUploadView.as_view(), name="flow_upload"),
+    path("flows/<int:pk>/publish/", views.FlowPublishView.as_view(), name="flow_publish"),
+    path("flows/<int:pk>/deprecate/", views.FlowDeprecateView.as_view(), name="flow_deprecate"),
+    path("flows/<int:pk>/delete/", views.FlowDeleteView.as_view(), name="flow_delete"),
+    path("flows/<int:pk>/clone/", views.FlowCloneView.as_view(), name="flow_clone"),
+    path("flows/<int:pk>/send/", views.SendFlowView.as_view(), name="flow_send"),
+    path("flows/<int:pk>/responses/", views.FlowResponseListView.as_view(), name="flow_responses"),
     # Analytics
     path("analytics/", views.AnalyticsView.as_view(), name="analytics"),
     # Webhook

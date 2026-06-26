@@ -21,14 +21,16 @@
 - 📨 **Live Unified Inbox** — Real-time chat interface with media, reply threading, and message status ticks.
 - 🚀 **Marketing Campaigns** — Schedule and send bulk messages using approved WhatsApp Templates. Track delivery, read rates, and bounce rates.
 - 👥 **Contact Management** — Import CSVs, assign dynamic colored **Labels**, and auto-sync users who subscribe via WhatsApp deep-links.
+- 📋 **WhatsApp Flows** — Build multi-step native forms inside WhatsApp (Feedback, Lead Gen, Appointments). Full lifecycle: create → upload JSON → publish → send → capture responses via webhook. Includes 3 starter templates and a `whatsapp_flow_completed` signal.
 - 🎯 **Contact Filter Presets** — Define named audience filters in settings for one-click campaign targeting.
 - 🔗 **User Model Integration** — Link your Django `User` model to `WhatsAppContact` with pluggable audience providers.
 - 🚫 **Blocked User Sync** — Automatically detect and exclude users who block your business.
 - 🧩 **Template Sync** — Pull all approved WhatsApp message templates directly from Meta with one click.
 - 🔗 **In-App Signups** — Create and manage `wa.me` deep links so users can instantly opt-in.
-- ⚡ **Webhooks Engine** — Built-in webhook endpoints to automatically ingest incoming messages, delivery receipts, and status updates.
+- ⚡ **Webhooks Engine** — Built-in webhook endpoints to automatically ingest incoming messages, delivery receipts, status updates, and Flow completions (`nfm_reply`).
 - 🔑 **REST APIs** — Send text, location, template; list chats/campaigns (API-key auth).
 - 🏢 **Multi-Account** — One Django project, multiple WhatsApp Business Accounts.
+- 🔒 **Encrypted Secrets** — Access tokens stored symmetrically encrypted (Fernet/AES-128) — key derived from `SECRET_KEY` by default.
 
 ---
 
@@ -179,7 +181,17 @@ curl -X POST https://yourdomain.com/whatsapp/api/send-template/ \
 
 ## 📋 Changelog
 
-### v1.0.5
+### v1.1.0 — WhatsApp Flows
+- 📋 **WhatsApp Flows** — Full lifecycle management: create, upload JSON, publish, deprecate, clone, delete via Meta Graph API.
+- 🚀 **3 Starter Templates** — Built-in Flow JSON templates for Feedback, Lead Generation, and Appointment Booking.
+- 📥 **Flow Responses** — Webhook automatically captures `nfm_reply` submissions, stores them as `WhatsAppFlowResponse` rows.
+- ⚡ **`whatsapp_flow_completed` signal** — Hook into flow completions from any Django app.
+- 📊 **Stats Tracking** — `sent_count` and `completion_count` auto-updated on every send and webhook submission.
+- 🔒 **Dynamic Flows Support** — `is_dynamic` flag + endpoint URI field + RSA public key upload utility.
+- 🛠 **Admin Integration** — `WhatsAppFlowAdmin` and `WhatsAppFlowResponseAdmin` registered in Django Admin.
+- 🧭 **Sidebar Navigation** — Flows entry added to the dashboard sidebar.
+
+### v1.0.5 — Encrypted DB Secrets
 - 🔒 **Database Credential Encryption** — Symmetrically encrypt `access_token` in database records (`WhatsAppAccount` model) using Fernet cryptography.
 - ⚙️ **Custom Encryption Key** — Dynamically derived from `SECRET_KEY` by default, customizable via `WHATSAPP['ENCRYPTION_KEY']`.
 - 🔄 **Plaintext Fallback** — Transparent migration with backward-compatibility for existing plaintext credentials.

@@ -1,0 +1,188 @@
+{% extends "django_meta_whatsapp/base.html" %}
+{% block title %}New Flow{% endblock %}
+{% block page_title %}Create New Flow{% endblock %}
+{% block page_subtitle %}<p class="text-xs text-gray-400">Flows are multi-step native forms inside WhatsApp</p>{% endblock %}
+
+{% block topbar_actions %}
+<a href="{% url 'django_meta_whatsapp:flow_list' %}" class="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+  <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Flows
+</a>
+{% endblock %}
+
+{% block content %}
+<form method="post" id="flow-create-form">
+  {% csrf_token %}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left column: Meta info -->
+    <div class="lg:col-span-1 space-y-4">
+
+      <!-- Basic Info -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
+        <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <i data-lucide="settings" class="w-4 h-4 text-gray-400"></i> Flow Settings
+        </h2>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Flow Name <span class="text-red-500">*</span></label>
+          <input type="text" name="name" required placeholder="e.g. Customer Feedback Q3"
+            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+          <p class="text-xs text-gray-400 mt-1">Internal label — shown in the dashboard only.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-2">Categories <span class="text-red-500">*</span></label>
+          <div class="space-y-1.5">
+            {% for val, label in category_choices %}
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" name="categories" value="{{ val }}"
+                class="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+              <span class="text-sm text-gray-700">{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Flow -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-3">
+        <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <i data-lucide="zap" class="w-4 h-4 text-purple-500"></i> Flow Type
+        </h2>
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" name="is_dynamic" value="1" id="is_dynamic_chk"
+            onchange="document.getElementById('endpoint_row').classList.toggle('hidden', !this.checked)"
+            class="mt-0.5 w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500">
+          <div>
+            <span class="text-sm font-medium text-gray-800">Dynamic Flow</span>
+            <p class="text-xs text-gray-400 mt-0.5">Flow calls your server between screens to load data in real time. Requires RSA key setup.</p>
+          </div>
+        </label>
+        <div id="endpoint_row" class="hidden">
+          <label class="block text-xs font-medium text-gray-600 mb-1">Endpoint URI</label>
+          <input type="url" name="endpoint_uri" placeholder="https://yoursite.com/whatsapp/flow-endpoint/"
+            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: JSON -->
+    <div class="lg:col-span-2 space-y-4">
+
+      <!-- Starter Templates -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <h2 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i> Start from a Template
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {% for key, tmpl in flow_templates.items %}
+          <button type="button" onclick="applyTemplate('{{ key }}')"
+            class="template-btn flex flex-col items-start gap-1 p-3 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left group"
+            data-key="{{ key }}">
+            <span class="text-sm font-medium text-gray-800 group-hover:text-emerald-700">{{ tmpl.label }}</span>
+            <span class="text-xs text-gray-400">{{ tmpl.categories|join:", " }}</span>
+          </button>
+          {% endfor %}
+          <button type="button" onclick="applyTemplate('blank')"
+            class="template-btn flex flex-col items-start gap-1 p-3 border-2 border-gray-200 rounded-lg hover:border-gray-400 hover:bg-gray-50 transition-all text-left"
+            data-key="blank">
+            <span class="text-sm font-medium text-gray-700">Blank</span>
+            <span class="text-xs text-gray-400">Start from scratch</span>
+          </button>
+        </div>
+        <input type="hidden" name="starter_template" id="starter_template_field">
+      </div>
+
+      <!-- JSON Editor -->
+      <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <i data-lucide="code-2" class="w-4 h-4 text-gray-400"></i> Flow JSON
+            <span class="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-mono">version 7.2</span>
+          </h2>
+          <div class="flex items-center gap-2">
+            <button type="button" onclick="formatJson()" class="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 border border-gray-200 rounded">
+              Format
+            </button>
+          </div>
+        </div>
+        <textarea name="flow_json" id="flow_json_editor" rows="22"
+          placeholder='{"version": "7.2", "screens": [...]}'
+          class="w-full text-xs font-mono border border-gray-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y bg-gray-50"
+          style="min-height: 300px;"></textarea>
+        <p class="text-xs text-gray-400 mt-2">
+          The JSON is saved locally and uploaded to Meta when you click "Upload JSON" from the detail page.
+          <a href="https://developers.facebook.com/docs/whatsapp/flows/reference/flowjson" target="_blank" class="text-emerald-600 hover:underline">Flow JSON Reference ↗</a>
+        </p>
+      </div>
+
+      <!-- Submit -->
+      <div class="flex justify-end gap-3">
+        <a href="{% url 'django_meta_whatsapp:flow_list' %}" class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+          Cancel
+        </a>
+        <button type="submit" class="inline-flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors">
+          <i data-lucide="plus" class="w-4 h-4"></i> Create Flow on Meta
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const TEMPLATES = {{ flow_templates|safe }};
+
+// Build JSON representations from Django's template variable
+const TEMPLATE_JSON = {
+  {% for key, tmpl in flow_templates.items %}
+  "{{ key }}": {{ tmpl.json|safe }},
+  {% endfor %}
+};
+
+const blankJson = {"version": "7.2", "screens": [{"id": "SCREEN_1", "title": "My Screen", "terminal": true, "layout": {"type": "SingleColumnLayout", "children": [{"type": "TextHeading", "text": "Welcome"}, {"type": "Footer", "label": "Submit", "on-click-action": {"name": "complete", "payload": {}}}]}}]};
+
+function applyTemplate(key) {
+  const field = document.getElementById('starter_template_field');
+  const editor = document.getElementById('flow_json_editor');
+
+  // Update selected state on buttons
+  document.querySelectorAll('.template-btn').forEach(btn => {
+    if (btn.dataset.key === key) {
+      btn.classList.add('border-emerald-500', 'bg-emerald-50');
+      btn.classList.remove('border-gray-200');
+    } else {
+      btn.classList.remove('border-emerald-500', 'bg-emerald-50');
+      btn.classList.add('border-gray-200');
+    }
+  });
+
+  if (key === 'blank') {
+    field.value = '';
+    editor.value = JSON.stringify(blankJson, null, 2);
+  } else {
+    field.value = key;
+    const json = TEMPLATE_JSON[key];
+    if (json) {
+      editor.value = JSON.stringify(json, null, 2);
+    }
+  }
+}
+
+function formatJson() {
+  const editor = document.getElementById('flow_json_editor');
+  try {
+    const parsed = JSON.parse(editor.value);
+    editor.value = JSON.stringify(parsed, null, 2);
+  } catch(e) {
+    alert('Invalid JSON: ' + e.message);
+  }
+}
+
+// Auto-select first template on load
+document.addEventListener('DOMContentLoaded', () => {
+  applyTemplate('feedback');
+});
+</script>
+{% endblock %}

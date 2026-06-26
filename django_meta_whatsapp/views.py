@@ -14,6 +14,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import (CreateView, DeleteView, DetailView, ListView, TemplateView, UpdateView)
 from django import forms
+from django.db import models
 from django.db.models import Count, Q, Sum
 
 from .models import (
@@ -21,6 +22,7 @@ from .models import (
     WhatsAppContact, WhatsAppConversation, WhatsAppMessage,
     WhatsAppTemplate, WhatsAppWebhookLog, WhatsAppAPIKey, WhatsAppLabel,
     WhatsAppCatalogProduct, WhatsAppBlockedUser, WhatsAppSignup,
+    WhatsAppFlow, WhatsAppFlowResponse,
 )
 from .utils import (
     run_campaign_async, send_text_message, send_location_message,
@@ -458,11 +460,16 @@ class TemplatePushToMetaView(WALoginMixin, View):
     def post(self, request, pk, *args, **kwargs):
         tmpl = get_object_or_404(WhatsAppTemplate, pk=pk)
         try:
-            push_template_to_meta(tmpl)
+            res = push_template_to_meta(tmpl)
+            tmpl.status = "PENDING"
+            if res and "id" in res:
+                tmpl.meta_template_id = res["id"]
+            tmpl.save()
             messages.success(request, f"Template '{tmpl.name}' submitted to Meta.")
         except Exception as e:
             messages.error(request, f"Push failed: {e}")
         return redirect("django_meta_whatsapp:template_list")
+
 
 
 # ── Catalog ────────────────────────────────────────────────────
@@ -729,6 +736,12 @@ class WebhookView(View):
                         WhatsAppMessage.objects.filter(message_id=mid).update(status=sv)
                         WhatsAppCampaignRecipient.objects.filter(message_id=mid).update(status=sv)
                 for msg in value.get("messages", []):
+                    # Detect WhatsApp Flow completions (nfm_reply)
+                    if msg.get("type") == "interactive":
+                        interactive = msg.get("interactive", {})
+                        if interactive.get("type") == "nfm_reply":
+                            self._save_flow_response(msg, account)
+                            continue
                     db_msg = self._save_message(msg, account)
                     if db_msg:
                         whatsapp_message_received.send(sender=self.__class__, message=db_msg)
@@ -780,6 +793,50 @@ class WebhookView(View):
             location_name=loc_name, location_address=loc_addr,
             reply_to=reply_to_db, raw_payload=msg,
         )
+
+    def _save_flow_response(self, msg, account):
+        """Parse a completed WhatsApp Flow submission and store it."""
+        from .signals import whatsapp_flow_completed
+        from django.utils.timezone import make_aware
+        try:
+            nfm = msg.get("interactive", {}).get("nfm_reply", {})
+            raw_json = nfm.get("response_json", "{}")
+            response_data = json.loads(raw_json) if isinstance(raw_json, str) else raw_json
+            flow_token = response_data.pop("flow_token", "")
+            from_num = msg.get("from", "")
+
+            # Try to match to a WhatsAppFlow by token or any known flow for this account
+            flow_obj = None
+            if flow_token:
+                flow_obj = WhatsAppFlow.objects.filter(
+                    account=account
+                ).filter(
+                    responses__flow_token=flow_token
+                ).first()
+            if not flow_obj and account:
+                # Best-effort: match by most recent flow
+                flow_obj = WhatsAppFlow.objects.filter(account=account).order_by("-created_at").first()
+
+            conv = WhatsAppConversation.objects.filter(phone_number=from_num).first()
+
+            response_obj = WhatsAppFlowResponse.objects.create(
+                flow=flow_obj,
+                conversation=conv,
+                phone_number=from_num,
+                response_data=response_data,
+                flow_token=flow_token,
+                raw_payload=msg,
+            )
+
+            # Update completion stats
+            if flow_obj:
+                WhatsAppFlow.objects.filter(pk=flow_obj.pk).update(
+                    completion_count=models.F("completion_count") + 1
+                )
+
+            whatsapp_flow_completed.send(sender=self.__class__, response=response_obj)
+        except Exception:
+            pass  # Never break webhook processing over flow parsing errors
 
 
 # ── Accounts / Settings ────────────────────────────────────────
@@ -1130,3 +1187,285 @@ class APIBlockedUserListView(_APIAuth, View):
         account = WhatsAppAccount.objects.filter(is_active=True).first()
         users = list(WhatsAppBlockedUser.objects.filter(account=account, is_active=True).values("phone_number", "blocked_at", "reason"))
         return JsonResponse({"blocked_users": users})
+
+
+# ── WhatsApp Flows ─────────────────────────────────────────────
+
+class FlowListView(WALoginMixin, TemplateView):
+    template_name = "django_meta_whatsapp/flow_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        acc = self.get_wa_account()
+        qs = WhatsAppFlow.objects.filter(account=acc) if acc else WhatsAppFlow.objects.none()
+        q = self.request.GET.get("q", "").strip()
+        s = self.request.GET.get("status", "").strip()
+        if q:
+            qs = qs.filter(name__icontains=q)
+        if s:
+            qs = qs.filter(status=s)
+        ctx.update({
+            "flows": qs,
+            "status_choices": WhatsAppFlow.STATUS_CHOICES,
+            "search_q": q,
+            "active_status": s,
+        })
+        return ctx
+
+
+class FlowCreateView(WALoginMixin, View):
+    template_name = "django_meta_whatsapp/flow_form.html"
+
+    def get(self, request):
+        from .flows import FLOW_TEMPLATES
+        return render(request, self.template_name, {
+            "flow_templates": FLOW_TEMPLATES,
+            "category_choices": WhatsAppFlow.CATEGORY_CHOICES,
+        })
+
+    def post(self, request):
+        from .flows import create_flow, FLOW_TEMPLATES
+        acc = self.get_wa_account()
+        name = request.POST.get("name", "").strip()
+        categories = request.POST.getlist("categories")
+        is_dynamic = request.POST.get("is_dynamic") == "1"
+        endpoint_uri = request.POST.get("endpoint_uri", "").strip()
+        flow_json_raw = request.POST.get("flow_json", "").strip()
+        starter = request.POST.get("starter_template", "")
+
+        if not name:
+            messages.error(request, "Flow name is required.")
+            return redirect("django_meta_whatsapp:flow_create")
+        if not categories:
+            messages.error(request, "Select at least one category.")
+            return redirect("django_meta_whatsapp:flow_create")
+
+        # Resolve flow JSON
+        try:
+            if starter and starter in FLOW_TEMPLATES:
+                flow_json = FLOW_TEMPLATES[starter]["json"]
+                if not categories:
+                    categories = FLOW_TEMPLATES[starter]["categories"]
+            elif flow_json_raw:
+                flow_json = json.loads(flow_json_raw)
+            else:
+                flow_json = {"version": "7.2", "screens": []}
+        except json.JSONDecodeError as e:
+            messages.error(request, f"Invalid Flow JSON: {e}")
+            return redirect("django_meta_whatsapp:flow_create")
+
+        # Create on Meta
+        try:
+            res = create_flow(name=name, categories=categories, account=acc)
+            meta_flow_id = res.get("id", "")
+        except Exception as e:
+            messages.error(request, f"Failed to create flow on Meta: {e}")
+            return redirect("django_meta_whatsapp:flow_create")
+
+        flow = WhatsAppFlow.objects.create(
+            account=acc,
+            name=name,
+            meta_flow_id=meta_flow_id,
+            categories=categories,
+            flow_json=flow_json,
+            is_dynamic=is_dynamic,
+            endpoint_uri=endpoint_uri,
+        )
+        messages.success(request, f"Flow '{name}' created successfully (ID: {meta_flow_id}).")
+        return redirect("django_meta_whatsapp:flow_detail", pk=flow.pk)
+
+
+class FlowDetailView(WALoginMixin, TemplateView):
+    template_name = "django_meta_whatsapp/flow_detail.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        flow = get_object_or_404(WhatsAppFlow, pk=self.kwargs["pk"])
+        ctx.update({
+            "flow": flow,
+            "flow_json_str": json.dumps(flow.flow_json, indent=2),
+            "recent_responses": flow.responses.order_by("-completed_at")[:5],
+            "response_count": flow.responses.count(),
+        })
+        return ctx
+
+
+class FlowUploadView(WALoginMixin, View):
+    """Upload / replace the flow JSON on Meta (DRAFT only)."""
+
+    def post(self, request, pk):
+        from .flows import upload_flow_json
+        flow = get_object_or_404(WhatsAppFlow, pk=pk)
+        acc = self.get_wa_account()
+
+        # Allow updating the local JSON first
+        flow_json_raw = request.POST.get("flow_json", "").strip()
+        if flow_json_raw:
+            try:
+                flow.flow_json = json.loads(flow_json_raw)
+                flow.save(update_fields=["flow_json", "updated_at"])
+            except json.JSONDecodeError as e:
+                messages.error(request, f"Invalid Flow JSON: {e}")
+                return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+
+        if not flow.meta_flow_id:
+            messages.error(request, "This flow has no Meta ID. It may not have been created on Meta yet.")
+            return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+
+        try:
+            res = upload_flow_json(flow, account=acc)
+            errors = res.get("validation_errors", [])
+            flow.validation_errors = errors
+            flow.save(update_fields=["validation_errors", "updated_at"])
+            if errors:
+                messages.warning(request, f"JSON uploaded but has {len(errors)} validation error(s). Fix them before publishing.")
+            else:
+                messages.success(request, "Flow JSON uploaded successfully — no validation errors.")
+        except Exception as e:
+            messages.error(request, f"Upload failed: {e}")
+        return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+
+
+class FlowPublishView(WALoginMixin, View):
+    def post(self, request, pk):
+        from .flows import publish_flow
+        flow = get_object_or_404(WhatsAppFlow, pk=pk)
+        acc = self.get_wa_account()
+        if not flow.can_publish:
+            messages.error(request, "Only DRAFT flows with a Meta ID can be published.")
+            return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+        try:
+            publish_flow(flow.meta_flow_id, account=acc)
+            flow.status = "PUBLISHED"
+            flow.save(update_fields=["status", "updated_at"])
+            messages.success(request, f"Flow '{flow.name}' is now PUBLISHED.")
+        except Exception as e:
+            messages.error(request, f"Publish failed: {e}")
+        return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+
+
+class FlowDeprecateView(WALoginMixin, View):
+    def post(self, request, pk):
+        from .flows import deprecate_flow
+        flow = get_object_or_404(WhatsAppFlow, pk=pk)
+        acc = self.get_wa_account()
+        if not flow.can_deprecate:
+            messages.error(request, "Only PUBLISHED flows can be deprecated.")
+            return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+        try:
+            deprecate_flow(flow.meta_flow_id, account=acc)
+            flow.status = "DEPRECATED"
+            flow.save(update_fields=["status", "updated_at"])
+            messages.success(request, f"Flow '{flow.name}' has been deprecated.")
+        except Exception as e:
+            messages.error(request, f"Deprecate failed: {e}")
+        return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+
+
+class FlowDeleteView(WALoginMixin, View):
+    def post(self, request, pk):
+        from .flows import delete_flow
+        flow = get_object_or_404(WhatsAppFlow, pk=pk)
+        acc = self.get_wa_account()
+        if not flow.can_delete:
+            messages.error(request, "Only DRAFT flows can be deleted.")
+            return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+        try:
+            if flow.meta_flow_id:
+                delete_flow(flow.meta_flow_id, account=acc)
+            flow.delete()
+            messages.success(request, "Flow deleted.")
+        except Exception as e:
+            messages.error(request, f"Delete failed: {e}")
+            return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+        return redirect("django_meta_whatsapp:flow_list")
+
+
+class FlowCloneView(WALoginMixin, View):
+    """Clone a flow — copies the JSON into a new DRAFT."""
+
+    def post(self, request, pk):
+        from .flows import create_flow
+        original = get_object_or_404(WhatsAppFlow, pk=pk)
+        acc = self.get_wa_account()
+        new_name = f"{original.name} (Copy)"
+        try:
+            res = create_flow(name=new_name, categories=original.categories, account=acc)
+            meta_flow_id = res.get("id", "")
+        except Exception as e:
+            messages.error(request, f"Failed to create clone on Meta: {e}")
+            return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+
+        clone = WhatsAppFlow.objects.create(
+            account=acc,
+            name=new_name,
+            meta_flow_id=meta_flow_id,
+            categories=list(original.categories),
+            flow_json=dict(original.flow_json),
+            is_dynamic=original.is_dynamic,
+            endpoint_uri=original.endpoint_uri,
+            status="DRAFT",
+        )
+        messages.success(request, f"Cloned as '{new_name}'.")
+        return redirect("django_meta_whatsapp:flow_detail", pk=clone.pk)
+
+
+class SendFlowView(WALoginMixin, View):
+    """Send a published flow as an interactive message to a phone number."""
+
+    def post(self, request, pk):
+        from .flows import send_flow_message
+        flow = get_object_or_404(WhatsAppFlow, pk=pk)
+        acc = self.get_wa_account()
+        phone = request.POST.get("phone", "").strip()
+        cta_text = request.POST.get("cta_text", "Open Form").strip()
+        header_text = request.POST.get("header_text", "").strip()
+        body_text = request.POST.get("body_text", "Please complete the form.").strip()
+        footer_text = request.POST.get("footer_text", "").strip()
+        mode = "draft" if flow.status == "DRAFT" else "published"
+
+        if not phone:
+            messages.error(request, "Phone number is required.")
+            return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+        if not flow.meta_flow_id:
+            messages.error(request, "This flow has no Meta ID — create it on Meta first.")
+            return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+
+        try:
+            send_flow_message(
+                phone=phone,
+                flow_id=flow.meta_flow_id,
+                cta_text=cta_text,
+                header_text=header_text,
+                body_text=body_text,
+                footer_text=footer_text,
+                mode=mode,
+                account=acc,
+            )
+            WhatsAppFlow.objects.filter(pk=pk).update(
+                sent_count=models.F("sent_count") + 1
+            )
+            messages.success(request, f"Flow message sent to {phone}.")
+        except Exception as e:
+            messages.error(request, f"Send failed: {e}")
+        return redirect("django_meta_whatsapp:flow_detail", pk=pk)
+
+
+class FlowResponseListView(WALoginMixin, TemplateView):
+    template_name = "django_meta_whatsapp/flow_response_list.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        flow = get_object_or_404(WhatsAppFlow, pk=self.kwargs["pk"])
+        responses = flow.responses.order_by("-completed_at")
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            responses = responses.filter(phone_number__icontains=q)
+        ctx.update({
+            "flow": flow,
+            "responses": responses,
+            "search_q": q,
+            "total_count": flow.responses.count(),
+            "unprocessed_count": flow.responses.filter(processed=False).count(),
+        })
+        return ctx

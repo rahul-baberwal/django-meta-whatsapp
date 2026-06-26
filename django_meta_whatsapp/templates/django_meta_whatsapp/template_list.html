@@ -48,17 +48,19 @@
               {% elif tmpl.status == 'PENDING' %}bg-amber-100 text-amber-700
               {% elif tmpl.status == 'REJECTED' %}bg-red-100 text-red-700
               {% else %}bg-gray-100 text-gray-600{% endif %}">
-              {{ tmpl.get_status_display }}
+              {% if tmpl.status == 'PENDING' %}Submitted to WABA{% else %}{{ tmpl.get_status_display }}{% endif %}
             </span>
           </td>
           <td class="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{{ tmpl.body_text|truncatechars:60 }}</td>
           <td class="px-4 py-3 text-right">
             <div class="flex items-center justify-end gap-2">
               <button type="button" onclick="document.getElementById('previewModal-{{ tmpl.pk }}').classList.remove('hidden')" class="text-gray-400 hover:text-emerald-600" title="Preview"><i data-lucide="eye" class="w-4 h-4"></i></button>
+              {% if tmpl.status == 'DRAFT' %}
               <form method="post" action="{% url 'django_meta_whatsapp:template_push' tmpl.pk %}" class="inline">
                 {% csrf_token %}
                 <button type="submit" class="text-gray-400 hover:text-purple-600" title="Push to Meta"><i data-lucide="upload-cloud" class="w-4 h-4"></i></button>
               </form>
+              {% endif %}
               <a href="{% url 'django_meta_whatsapp:template_update' tmpl.pk %}" class="text-gray-400 hover:text-blue-600" title="Edit"><i data-lucide="pencil" class="w-4 h-4"></i></a>
               <a href="{% url 'django_meta_whatsapp:template_delete' tmpl.pk %}" class="text-gray-400 hover:text-red-600" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></a>
             </div>

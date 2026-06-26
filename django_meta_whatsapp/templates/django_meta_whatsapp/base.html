@@ -83,6 +83,9 @@
       <a href="{% url 'django_meta_whatsapp:template_list' %}" class="sidebar-link {% if 'template' in request.resolver_match.url_name %}active{% endif %}">
         <i data-lucide="file-text" class="w-4 h-4 flex-shrink-0"></i> Templates
       </a>
+      <a href="{% url 'django_meta_whatsapp:flow_list' %}" class="sidebar-link {% if 'flow' in request.resolver_match.url_name %}active{% endif %}">
+        <i data-lucide="layout-list" class="w-4 h-4 flex-shrink-0"></i> Flows
+      </a>
       <a href="{% url 'django_meta_whatsapp:catalog_list' %}" class="sidebar-link {% if 'catalog' in request.resolver_match.url_name %}active{% endif %}">
         <i data-lucide="shopping-bag" class="w-4 h-4 flex-shrink-0"></i> Catalog
       </a>

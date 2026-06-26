@@ -3,6 +3,7 @@ from .models import (
     WhatsAppAccount, WhatsAppContact, WhatsAppConversation, WhatsAppMessage,
     WhatsAppTemplate, WhatsAppCampaign, WhatsAppCampaignRecipient,
     WhatsAppMedia, WhatsAppWebhookLog, WhatsAppAPIKey,
+    WhatsAppFlow, WhatsAppFlowResponse,
 )
 
 @admin.register(WhatsAppAccount)
@@ -63,3 +64,17 @@ class WhatsAppWebhookLogAdmin(admin.ModelAdmin):
 class WhatsAppAPIKeyAdmin(admin.ModelAdmin):
     list_display = ["name","key","is_active","created_at"]
     list_filter = ["is_active"]
+
+@admin.register(WhatsAppFlow)
+class WhatsAppFlowAdmin(admin.ModelAdmin):
+    list_display = ["name", "account", "status", "meta_flow_id", "is_dynamic", "sent_count", "completion_count", "created_at"]
+    list_filter = ["status", "is_dynamic", "account"]
+    search_fields = ["name", "meta_flow_id"]
+    readonly_fields = ["meta_flow_id", "validation_errors", "sent_count", "completion_count", "created_at", "updated_at"]
+
+@admin.register(WhatsAppFlowResponse)
+class WhatsAppFlowResponseAdmin(admin.ModelAdmin):
+    list_display = ["phone_number", "flow", "completed_at", "processed"]
+    list_filter = ["processed", "flow"]
+    search_fields = ["phone_number", "flow_token"]
+    readonly_fields = ["response_data", "raw_payload", "completed_at"]

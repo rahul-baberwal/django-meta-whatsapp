@@ -76,6 +76,7 @@
       <div class="nav-group">Messaging & Marketing</div>
       <a href="#inbox" class="sidebar-link">Unified Inbox</a>
       <a href="#campaigns" class="sidebar-link">Campaigns & Templates</a>
+      <a href="#flows" class="sidebar-link">WhatsApp Flows</a>
       <a href="#signups" class="sidebar-link">In-App Signups</a>
       <a href="#blocked" class="sidebar-link">Blocked Users</a>
       
@@ -120,7 +121,7 @@
           <a href="https://pypi.org/project/django-meta-whatsapp/" target="_blank">
             <img src="https://img.shields.io/pypi/v/django-meta-whatsapp.svg?color=22c55e&label=PyPI%20latest" alt="PyPI Version">
           </a>
-          <img src="https://img.shields.io/badge/version-1.0.5-22c55e.svg" alt="Current Version">
+          <img src="https://img.shields.io/badge/version-1.1.0-22c55e.svg" alt="Current Version">
           <a href="https://djangopackages.org/packages/p/django-meta-whatsapp/" target="_blank">
             <img src="https://img.shields.io/badge/Django%20Packages-django--meta--whatsapp-8c3c26.svg" alt="Latest on Django Packages">
           </a>
@@ -243,6 +244,96 @@ WHATSAPP_DASHBOARD_LOGO = "https://yourwebsite.com/logo.png"</code></pre>
         
         <h3>Running a Campaign</h3>
         <p>Create a new Campaign, select a synced template, and attach an audience by selecting specific Contacts or a specific Label. The engine will dispatch the messages via API and update the Campaign's status to reflect Deliveries, Reads, and Bounces.</p>
+      </section>
+
+      <section id="flows">
+        <h2>WhatsApp Flows</h2>
+        <p>WhatsApp Flows are native multi-step forms that open directly inside WhatsApp — no browser, no redirection. Use them to collect leads, book appointments, gather feedback, and more.</p>
+
+        <div class="card">
+          <h3 class="mt-0 text-white">Flow Lifecycle</h3>
+          <ol style="list-style:decimal;padding-left:1.5rem;color:#94a3b8">
+            <li style="margin-bottom:0.5rem">Create the Flow on Meta (registers it in WABA)</li>
+            <li style="margin-bottom:0.5rem">Upload your Flow JSON (version 7.2) — Meta validates it and returns any errors</li>
+            <li style="margin-bottom:0.5rem">Publish the Flow — once published it cannot be edited; clone to make a new version</li>
+            <li style="margin-bottom:0.5rem">Send an interactive Flow message to a phone number</li>
+            <li>Customer submits the form → webhook receives <code>nfm_reply</code> → <code>WhatsAppFlowResponse</code> row created automatically</li>
+          </ol>
+        </div>
+
+        <h3>Python API — flows.py</h3>
+        <p>All Meta Graph API calls for Flows live in <code>django_meta_whatsapp.flows</code>.</p>
+<pre><code class="language-python">from django_meta_whatsapp.flows import (
+    create_flow,        # POST /WABA_ID/flows
+    upload_flow_json,   # POST /FLOW_ID/assets
+    publish_flow,       # POST /FLOW_ID/publish
+    deprecate_flow,     # POST /FLOW_ID/deprecate
+    delete_flow,        # DELETE /FLOW_ID
+    send_flow_message,  # Send interactive flow message
+    upload_rsa_public_key,  # For dynamic flows
+)
+
+# Create a flow
+result = create_flow(name="Customer Feedback", categories=["CUSTOMER_SUPPORT"])
+meta_flow_id = result["id"]
+
+# Send the flow to a user
+send_flow_message(
+    phone="919876543210",
+    flow_id=meta_flow_id,
+    cta_text="Share Feedback",
+    body_text="We'd love to hear from you!",
+    mode="published",   # or "draft" for testing
+)</code></pre>
+
+        <h3>Handling Flow Responses (Signal)</h3>
+        <p>When a user completes a flow, the webhook saves a <code>WhatsAppFlowResponse</code> and fires the <code>whatsapp_flow_completed</code> signal.</p>
+<pre><code class="language-python">from django.dispatch import receiver
+from django_meta_whatsapp.signals import whatsapp_flow_completed
+
+@receiver(whatsapp_flow_completed)
+def handle_flow_submission(sender, response, **kwargs):
+    # response is a WhatsAppFlowResponse instance
+    print(response.phone_number)
+    print(response.response_data)   # dict — all form fields submitted
+    print(response.flow.name)       # the matched WhatsAppFlow
+
+    # Mark as handled
+    response.processed = True
+    response.save(update_fields=["processed"])</code></pre>
+
+        <h3>Starter Flow JSON Templates</h3>
+        <p>The package ships 3 ready-to-use Flow JSON templates via <code>FLOW_TEMPLATES</code>. They are pre-loaded in the "New Flow" dashboard form.</p>
+        <div class="card">
+          <ul class="mb-0">
+            <li><strong>feedback</strong> — Rating (5-star) + optional comments. Category: CUSTOMER_SUPPORT</li>
+            <li><strong>lead_generation</strong> — Name, email, company, interest dropdown. Category: LEAD_GENERATION</li>
+            <li><strong>appointment</strong> — Name, DatePicker, time slot dropdown, notes. Category: APPOINTMENT_BOOKING</li>
+          </ul>
+        </div>
+
+        <h3>Dynamic Flows (Server-Side Rendering)</h3>
+        <p>Dynamic flows call your server between screens to load data in real time (e.g. available time slots). They require an RSA key pair for encrypted communication.</p>
+<pre><code class="language-python">from django_meta_whatsapp.flows import upload_rsa_public_key
+
+# 1. Generate a key pair (run once, store private key securely)
+#    openssl genrsa -des3 -out private.pem 2048
+#    openssl rsa -in private.pem -pubout -out public.pem
+
+# 2. Upload your public key to Meta
+with open("public.pem") as f:
+    upload_rsa_public_key(f.read())</code></pre>
+
+        <h3>Models</h3>
+        <div class="card p-0 overflow-hidden">
+          <table class="w-full text-left border-collapse">
+            <thead><tr class="bg-white/5 border-b border-white/10 text-white"><th class="p-3 font-semibold text-sm">Model</th><th class="p-3 font-semibold text-sm">Purpose</th></tr></thead>
+            <tbody class="text-sm text-gray-300">
+              <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppFlow</td><td class="p-3">Flow design, status, and stats (local copy of JSON + Meta ID)</td></tr>
+              <tr><td class="p-3 font-mono text-brand-400">WhatsAppFlowResponse</td><td class="p-3">Each form submission received via webhook (<code>nfm_reply</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section id="signups">
@@ -625,11 +716,13 @@ WHATSAPP = {
       <section id="signals">
         <h2>Django Signals</h2>
         <p>Hook into the WhatsApp lifecycle directly in your Django app.</p>
-<pre class="m-0 mb-4 border-none bg-black/30"><code class="language-python">from django.dispatch import receiver
+<pre><code class="language-python">from django.dispatch import receiver
 from django_meta_whatsapp.signals import (
-    whatsapp_message_received,
-    whatsapp_message_sent,
-    whatsapp_campaign_completed,
+    whatsapp_message_received,    # kwargs: message (WhatsAppMessage)
+    whatsapp_message_sent,        # kwargs: message (WhatsAppMessage)
+    whatsapp_campaign_completed,  # kwargs: campaign, sent, failed
+    whatsapp_user_subscribed,     # kwargs: contact, signup
+    whatsapp_flow_completed,      # kwargs: response (WhatsAppFlowResponse) ← NEW in v1.1
 )
 
 @receiver(whatsapp_message_received)
@@ -638,7 +731,14 @@ def on_inbound(sender, message, **kwargs):
 
 @receiver(whatsapp_campaign_completed)
 def on_campaign_done(sender, campaign, sent, failed, **kwargs):
-    print(f"Campaign '{campaign.name}' finished: {sent} sent, {failed} failed")</code></pre>
+    print(f"Campaign '{campaign.name}' finished: {sent} sent, {failed} failed")
+
+@receiver(whatsapp_flow_completed)
+def on_flow_done(sender, response, **kwargs):
+    # Fired whenever a user submits a WhatsApp Flow form
+    print(response.phone_number, response.response_data)
+    response.processed = True
+    response.save(update_fields=["processed"])</code></pre>
       </section>
 
       <section id="management">
@@ -670,7 +770,9 @@ python manage.py wa_sync_templates --account-id 1</code></pre>
                     <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppCampaignRecipient</td><td class="p-3">Per-recipient status tracking</td></tr>
                     <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppMedia</td><td class="p-3">Uploaded media library</td></tr>
                     <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppWebhookLog</td><td class="p-3">Raw webhook event logs</td></tr>
-                    <tr class=""><td class="p-3 font-mono text-brand-400">WhatsAppAPIKey</td><td class="p-3">REST API authentication keys</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppAPIKey</td><td class="p-3">REST API authentication keys</td></tr>
+                    <tr class="border-b border-white/10"><td class="p-3 font-mono text-brand-400">WhatsAppFlow</td><td class="p-3">Flow design, status, and stats</td></tr>
+                    <tr class=""><td class="p-3 font-mono text-brand-400">WhatsAppFlowResponse</td><td class="p-3">Per-user form submission (from nfm_reply webhook)</td></tr>
                 </tbody>
             </table>
         </div>
