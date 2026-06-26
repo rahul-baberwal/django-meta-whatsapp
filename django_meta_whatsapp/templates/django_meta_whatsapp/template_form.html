@@ -649,19 +649,63 @@ document.addEventListener('DOMContentLoaded', () => {
     if (hType !== 'NONE') {
       headerJson = { type: hType };
       if (hType === 'TEXT') {
+        if (!headerTextInput.value.trim()) {
+          e.preventDefault();
+          alert('Header text is required when header type is set to TEXT.');
+          return;
+        }
         headerJson.text = headerTextInput.value;
       }
     }
     document.getElementById('header_hidden').value = headerJson ? JSON.stringify(headerJson) : '';
     
+    // Sync all button data from DOM before validating
+    const buttonRows = buttonsContainer.children;
+    for (let i = 0; i < buttonRows.length; i++) {
+      const row = buttonRows[i];
+      if (buttonsData[i]) {
+        const typeSelect = row.querySelector('.btn-type');
+        const textInput = row.querySelector('.btn-text');
+        const urlInput = row.querySelector('.btn-url');
+        const phoneInput = row.querySelector('.btn-phone');
+        const exampleInput = row.querySelector('.btn-example');
+
+        if (typeSelect) buttonsData[i].type = typeSelect.value;
+        if (textInput) buttonsData[i].text = textInput.value;
+        if (urlInput) buttonsData[i].url = urlInput.value;
+        if (phoneInput) buttonsData[i].phone_number = phoneInput.value;
+        if (exampleInput) buttonsData[i].example = exampleInput.value;
+      }
+    }
+
     // Construct buttons JSON
     if (buttonsData.length > 0) {
       // Validate
-      for (let btn of buttonsData) {
-        if (!btn.text) {
+      for (let i = 0; i < buttonsData.length; i++) {
+        const btn = buttonsData[i];
+        if (!btn.text || !btn.text.trim()) {
           e.preventDefault();
-          alert('All buttons must have text.');
+          alert(`Button ${i + 1} text is required.`);
           return;
+        }
+        if (btn.type === 'URL') {
+          if (!btn.url || !btn.url.trim()) {
+            e.preventDefault();
+            alert(`URL is required for Button ${i + 1} ("${btn.text}").`);
+            return;
+          }
+        } else if (btn.type === 'PHONE_NUMBER') {
+          if (!btn.phone_number || !btn.phone_number.trim()) {
+            e.preventDefault();
+            alert(`Phone number is required for Button ${i + 1} ("${btn.text}").`);
+            return;
+          }
+        } else if (btn.type === 'COPY_CODE') {
+          if (!btn.example || !btn.example.trim()) {
+            e.preventDefault();
+            alert(`Coupon/Promo code is required for Button ${i + 1} ("${btn.text}").`);
+            return;
+          }
         }
       }
       document.getElementById('buttons_hidden').value = JSON.stringify(buttonsData);

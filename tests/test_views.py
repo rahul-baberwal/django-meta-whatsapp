@@ -126,3 +126,36 @@ class RESTAPIViewTests(TestCase):
         self.assertIn("conversations", data)
         self.assertEqual(len(data["conversations"]), 1)
         self.assertEqual(data["conversations"][0]["phone_number"], "919876543210")
+
+
+class UpdateConversationLabelViewTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth.models import User
+        self.client = Client()
+        self.user = User.objects.create_user(username="agent", password="password")
+        self.client.force_login(self.user)
+        self.conv = WhatsAppConversation.objects.create(phone_number="919876543210")
+
+    def test_update_label_success(self):
+        url = reverse("django_meta_whatsapp:update_label", kwargs={"pk": self.conv.pk})
+        response = self.client.post(url, {"label": "new_label"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+        
+        self.conv.refresh_from_db()
+        self.assertIsNotNone(self.conv.label)
+        self.assertEqual(self.conv.label.name, "new_label")
+
+    def test_update_label_clear(self):
+        from django_meta_whatsapp.models import WhatsAppLabel
+        lbl = WhatsAppLabel.objects.create(name="some_label")
+        self.conv.label = lbl
+        self.conv.save()
+
+        url = reverse("django_meta_whatsapp:update_label", kwargs={"pk": self.conv.pk})
+        response = self.client.post(url, {"label": ""})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
+        
+        self.conv.refresh_from_db()
+        self.assertIsNone(self.conv.label)

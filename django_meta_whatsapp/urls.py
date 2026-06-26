@@ -10,6 +10,7 @@ urlpatterns = [
     path("inbox/<str:phone_number>/", views.ChatRoomView.as_view(), name="chat_room"),
     path("inbox/<str:phone_number>/send/", views.SendMessageView.as_view(), name="send_message"),
     path("inbox/message/<int:pk>/delete/", views.DeleteMessageView.as_view(), name="delete_message"),
+    path("inbox/conversation/<int:pk>/label/", views.UpdateConversationLabelView.as_view(), name="update_label"),
     # Labels
     path("labels/", views.LabelListView.as_view(), name="label_list"),
     path("labels/add/", views.LabelCreateView.as_view(), name="label_create"),
