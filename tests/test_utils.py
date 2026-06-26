@@ -145,3 +145,77 @@ class WhatsAppUtilsTests(TestCase):
         self.assertEqual(recipients.count(), 1)
         self.assertEqual(recipients[0].status, "sent")
         self.assertEqual(recipients[0].message_id, "msg_campaign")
+
+    @patch("requests.post")
+    def test_push_standard_template_to_meta(self, mock_post):
+        from django_meta_whatsapp.utils import push_template_to_meta
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "meta_tpl_id_123"}
+        mock_post.return_value = mock_resp
+
+        tmpl = WhatsAppTemplate.objects.create(
+            account=self.account,
+            name="welcome_user",
+            language="en",
+            category="MARKETING",
+            body_text="Welcome {{1}}!",
+            footer_text="Unsubscribe",
+            buttons=[{"type": "QUICK_REPLY", "text": "Yes"}]
+        )
+
+        res = push_template_to_meta(tmpl, account=self.account)
+        self.assertEqual(res["id"], "meta_tpl_id_123")
+
+        # Verify POST payload sent to Meta
+        mock_post.assert_called_once()
+        args, kwargs = mock_post.call_args
+        payload = kwargs["json"]
+        self.assertEqual(payload["name"], "welcome_user")
+        self.assertEqual(payload["category"], "MARKETING")
+        self.assertEqual(len(payload["components"]), 3)
+        self.assertEqual(payload["components"][0]["type"], "BODY")
+        self.assertEqual(payload["components"][0]["text"], "Welcome {{1}}!")
+        self.assertEqual(payload["components"][1]["type"], "FOOTER")
+        self.assertEqual(payload["components"][1]["text"], "Unsubscribe")
+
+    @patch("requests.post")
+    def test_push_auth_template_to_meta(self, mock_post):
+        from django_meta_whatsapp.utils import push_template_to_meta
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"id": "meta_tpl_id_auth"}
+        mock_post.return_value = mock_resp
+
+        # 1. Test standard auth template (which defaults to COPY_CODE button)
+        tmpl = WhatsAppTemplate.objects.create(
+            account=self.account,
+            name="auth_code",
+            language="en",
+            category="AUTHENTICATION",
+            body_text="Your OTP is {{1}}.",
+            footer_text="Expires in 10 minutes"
+        )
+
+        res = push_template_to_meta(tmpl, account=self.account)
+        self.assertEqual(res["id"], "meta_tpl_id_auth")
+
+        args, kwargs = mock_post.call_args
+        payload = kwargs["json"]
+        self.assertEqual(payload["category"], "AUTHENTICATION")
+        components = payload["components"]
+        self.assertEqual(len(components), 3)
+
+        # BODY should NOT have text, but add_security_recommendation = True
+        body = next(c for c in components if c["type"] == "BODY")
+        self.assertNotIn("text", body)
+        self.assertTrue(body["add_security_recommendation"])
+
+        # FOOTER should be converted to code_expiration_minutes
+        footer = next(c for c in components if c["type"] == "FOOTER")
+        self.assertEqual(footer["code_expiration_minutes"], 10)
+
+        # BUTTONS should be converted to OTP type COPY_CODE
+        buttons = next(c for c in components if c["type"] == "BUTTONS")
+        self.assertEqual(buttons["buttons"][0]["type"], "OTP")
+        self.assertEqual(buttons["buttons"][0]["otp_type"], "COPY_CODE")

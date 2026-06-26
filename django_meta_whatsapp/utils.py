@@ -339,11 +339,65 @@ def push_template_to_meta(template_obj, account=None) -> dict:
     components = []
     if template_obj.header:
         components.append({"type": "HEADER", **template_obj.header})
-    components.append({"type": "BODY", "text": template_obj.body_text})
-    if template_obj.footer_text:
-        components.append({"type": "FOOTER", "text": template_obj.footer_text})
-    if template_obj.buttons:
-        components.append({"type": "BUTTONS", "buttons": template_obj.buttons})
+        
+    if template_obj.category == "AUTHENTICATION":
+        # Meta AUTHENTICATION templates require a very specific schema:
+        # 1. BODY must NOT have "text". Instead, use "add_security_recommendation"
+        components.append({
+            "type": "BODY",
+            "add_security_recommendation": True
+        })
+        # 2. FOOTER can only be "code_expiration_minutes" (integer 1-90)
+        if template_obj.footer_text:
+            try:
+                # Extract digits if any
+                import re
+                digits = re.findall(r'\d+', template_obj.footer_text)
+                if digits:
+                    mins = int(digits[0])
+                    if 1 <= mins <= 90:
+                        components.append({
+                            "type": "FOOTER",
+                            "code_expiration_minutes": mins
+                        })
+            except Exception:
+                pass
+        # 3. BUTTONS must be of type OTP (COPY_CODE or ONE_TAP)
+        otp_buttons = []
+        if template_obj.buttons:
+            for btn in template_obj.buttons:
+                btn_type = btn.get("type", "")
+                if btn_type == "ONE_TAP":
+                    otp_buttons.append({
+                        "type": "OTP",
+                        "otp_type": "ONE_TAP",
+                        "text": btn.get("text") or "Autofill"
+                    })
+                else:
+                    otp_buttons.append({
+                        "type": "OTP",
+                        "otp_type": "COPY_CODE",
+                        "text": btn.get("text") or "Copy Code"
+                    })
+        else:
+            # Authentication templates require exactly one OTP button
+            otp_buttons.append({
+                "type": "OTP",
+                "otp_type": "COPY_CODE",
+                "text": "Copy Code"
+            })
+        components.append({
+            "type": "BUTTONS",
+            "buttons": otp_buttons
+        })
+    else:
+        # Standard BODY for MARKETING/UTILITY
+        components.append({"type": "BODY", "text": template_obj.body_text})
+        if template_obj.footer_text:
+            components.append({"type": "FOOTER", "text": template_obj.footer_text})
+        if template_obj.buttons:
+            components.append({"type": "BUTTONS", "buttons": template_obj.buttons})
+            
     payload = {
         "name": template_obj.name,
         "language": template_obj.language,
