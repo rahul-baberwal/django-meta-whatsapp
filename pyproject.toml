@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-meta-whatsapp"
-version = "1.0.5"
+version = "1.0.6"
 description = "Production-ready Django WhatsApp Cloud Platform — Inbox, Campaigns, Templates, Analytics"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -27,8 +27,3 @@ celery = ["celery>=5.0", "django-celery-beat>=2.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["django_meta_whatsapp"]
-include = [
-    "django_meta_whatsapp/templates/**/*",
-    "django_meta_whatsapp/templatetags/*",
-    "django_meta_whatsapp/static/**/*"
-]

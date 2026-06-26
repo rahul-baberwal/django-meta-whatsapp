@@ -1,5 +1,3 @@
-recursive-include django_meta_whatsapp/static *
-recursive-include django_meta_whatsapp/templates *
-recursive-include django_meta_whatsapp/templatetags *
+recursive-include django_meta_whatsapp *
 include README.md
 include LICENSE
